@@ -2,14 +2,13 @@ services:
   myquang:
     build: .
     container_name: myquang-app
-    ports:
-      - "3001:8000"
+    network_mode: host
     volumes:
       - myquang_data:/data
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - PORT=8000
+      - PORT=3001
       - DB_PATH=/data/myquang.db
 
 volumes:
