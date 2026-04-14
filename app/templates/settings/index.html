@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+{% block title %}Cài đặt{% endblock %}
+{% block page_title %}Cài đặt hệ thống{% endblock %}
+
+{% block content %}
+<div x-data="settingsApp()" class="space-y-4">
+
+  <!-- Tab navigation -->
+  <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-1 flex gap-1 max-w-lg">
+    <button @click="activeTab = 'info'"
+            :class="activeTab === 'info' ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-600 hover:bg-amber-50'"
+            class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all">
+      Thông tin quán
+    </button>
+    <button @click="activeTab = 'bank'"
+            :class="activeTab === 'bank' ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-600 hover:bg-amber-50'"
+            class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all">
+      Ngân hàng
+    </button>
+    {% if session.role == 'admin' %}
+    <button @click="activeTab = 'users'"
+            :class="activeTab === 'users' ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-600 hover:bg-amber-50'"
+            class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all">
+      Nhân viên
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       TAB: THÔNG TIN QUÁN
+  ════════════════════════════════════════════ -->
+  <div x-show="activeTab === 'info'" x-cloak>
+    <div class="bg-white rounded-xl shadow-sm border border-amber-100 overflow-hidden max-w-2xl">
+      <div class="px-6 py-4 border-b border-amber-50">
+        <h2 class="font-semibold text-gray-800">Thông tin quán ăn</h2>
+        <p class="text-xs text-gray-500 mt-0.5">Thông tin hiển thị trên hóa đơn và giao diện</p>
+      </div>
+      <form method="POST" action="/settings" class="px-6 py-5 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Tên quán <span class="text-red-400">*</span></label>
+          <input type="text" name="restaurant_name"
+                 value="{{ settings.restaurant_name }}"
+                 placeholder="Quán Ăn MyQuang"
+                 class="w-full border border-amber-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
+          <input type="text" name="restaurant_address"
+                 value="{{ settings.restaurant_address or settings.address }}"
+                 placeholder="Số nhà, đường, phường, quận, thành phố"
+                 class="w-full border border-amber-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
+          <input type="tel" name="restaurant_phone"
+                 value="{{ settings.restaurant_phone or settings.phone }}"
+                 placeholder="0901 234 567"
+                 class="w-full border border-amber-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Ghi chú cuối hóa đơn</label>
+          <textarea name="receipt_footer_note" rows="3"
+                    placeholder="Cảm ơn quý khách! Hẹn gặp lại..."
+                    class="w-full border border-amber-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent resize-none">{{ settings.receipt_footer_note }}</textarea>
+        </div>
+        <!-- Hidden bank fields (resubmit them so they aren't overwritten) -->
+        <input type="hidden" name="bank_account" value="{{ settings.bank_account }}">
+        <input type="hidden" name="bank_name" value="{{ settings.bank_name }}">
+        <input type="hidden" name="bank_owner" value="{{ settings.bank_owner }}">
+        <div class="pt-2">
+          <button type="submit"
+                  class="flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            Lưu thay đổi
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       TAB: NGÂN HÀNG
+  ════════════════════════════════════════════ -->
+  <div x-show="activeTab === 'bank'" x-cloak>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-4xl">
+
+      <!-- Form ngân hàng -->
+      <div class="bg-white rounded-xl shadow-sm border border-amber-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-amber-50">
+          <h2 class="font-semibold text-gray-800">Tài khoản ngân hàng</h2>
+          <p class="text-xs text-gray-500 mt-0.5">Dùng để tạo QR thanh toán</p>
+        </div>
+        <form method="POST" action="/settings" class="px-6 py-5 space-y-4">
+          <!-- Hidden info fields -->
+          <input type="hidden" name="restaurant_name" value="{{ settings.restaurant_name }}">
+          <input type="hidden" name="restaurant_address" value="{{ settings.restaurant_address or settings.address }}">
+          <input type="hidden" name="restaurant_phone" value="{{ settings.restaurant_phone or settings.phone }}">
+          <input type="hidden" name="receipt_footer_note" value="{{ settings.receipt_footer_note }}">
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Số tài khoản</label>
+            <input type="text" name="bank_account"
+                   x-model="bankAccount"
+                   value="{{ settings.bank_account }}"
+                   placeholder="1234567890"
+                   class="w-full border border-amber-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tên ngân hàng</label>
+            <input type="text" name="bank_name"
+                   x-model="bankName"
+                   value="{{ settings.bank_name }}"
+                   placeholder="Vietcombank / MB Bank / ..."
+                   class="w-full border border-amber-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tên chủ tài khoản</label>
+            <input type="text" name="bank_owner"
+                   x-model="bankOwner"
+                   value="{{ settings.bank_owner }}"
+                   placeholder="NGUYEN VAN A"
+                   class="w-full border border-amber-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent">
+          </div>
+          <div class="pt-2">
+            <button type="submit"
+                    class="flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm">
+              <i data-lucide="save" class="w-4 h-4"></i>
+              Lưu thay đổi
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- QR Preview -->
+      <div class="bg-white rounded-xl shadow-sm border border-amber-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-amber-50">
+          <h2 class="font-semibold text-gray-800">Preview QR thanh toán</h2>
+          <p class="text-xs text-gray-500 mt-0.5">QR VietQR tự động (cần đủ thông tin)</p>
+        </div>
+        <div class="px-6 py-5">
+          <div x-show="bankAccount && bankName"
+               class="flex flex-col items-center gap-3">
+            <img :src="getVietQRUrl()"
+                 class="w-48 h-48 rounded-xl border border-amber-100 shadow-sm"
+                 alt="QR Code"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+            <div class="hidden w-48 h-48 rounded-xl border-2 border-dashed border-amber-200 items-center justify-center">
+              <div class="text-center text-gray-400 text-xs p-4">
+                <i data-lucide="qr-code" class="w-8 h-8 mx-auto mb-2 opacity-40"></i>
+                <p>Không thể tải QR</p>
+              </div>
+            </div>
+            <div class="text-center">
+              <div class="text-sm font-semibold text-gray-800" x-text="bankOwner || 'Chủ tài khoản'"></div>
+              <div class="text-xs text-gray-500" x-text="bankAccount"></div>
+              <div class="text-xs text-amber-600 font-medium" x-text="bankName"></div>
+            </div>
+          </div>
+          <div x-show="!bankAccount || !bankName"
+               class="flex flex-col items-center justify-center h-52 text-gray-400">
+            <i data-lucide="qr-code" class="w-12 h-12 mb-3 opacity-30"></i>
+            <p class="text-sm">Nhập số TK và tên ngân hàng để xem QR</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       TAB: QUẢN LÝ NHÂN VIÊN (admin only)
+  ════════════════════════════════════════════ -->
+  {% if session.role == 'admin' %}
+  <div x-show="activeTab === 'users'" x-cloak class="space-y-4">
+
+    <div class="bg-white rounded-xl shadow-sm border border-amber-100 overflow-hidden">
+      <div class="px-6 py-4 border-b border-amber-50 flex items-center justify-between">
+        <div>
+          <h2 class="font-semibold text-gray-800">Quản lý tài khoản</h2>
+          <p class="text-xs text-gray-500 mt-0.5">Tạo và quản lý tài khoản nhân viên</p>
+        </div>
+        <button @click="showCreateModal = true"
+                class="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm">
+          <i data-lucide="user-plus" class="w-4 h-4"></i>
+          Tạo tài khoản
+        </button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-amber-50 text-xs text-gray-500 uppercase">
+            <tr>
+              <th class="px-4 py-3 text-left">#</th>
+              <th class="px-4 py-3 text-left">Họ tên</th>
+              <th class="px-4 py-3 text-left">Username</th>
+              <th class="px-4 py-3 text-left">Vai trò</th>
+              <th class="px-4 py-3 text-center">Trạng thái</th>
+              <th class="px-4 py-3 text-center">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+            {% for u in users %}
+            <tr class="hover:bg-amber-50/50 transition-colors">
+              <td class="px-4 py-3 text-gray-400 text-xs">{{ u.id }}</td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-bold text-xs flex-shrink-0">
+                    {{ u.full_name[0] | upper }}
+                  </div>
+                  <span class="font-medium text-gray-800">{{ u.full_name }}</span>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-gray-500 font-mono text-xs">{{ u.username }}</td>
+              <td class="px-4 py-3">
+                <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                             {% if u.role_name == 'admin' %}bg-amber-100 text-amber-700
+                             {% elif u.role_name == 'manager' %}bg-blue-100 text-blue-700
+                             {% else %}bg-gray-100 text-gray-600{% endif %}">
+                  {{ u.role_name }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-center">
+                {% if u.is_active %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                  Hoạt động
+                </span>
+                {% else %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-xs font-medium">
+                  <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                  Tạm khóa
+                </span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex items-center justify-center gap-2">
+                  <!-- Toggle active -->
+                  <form method="POST" action="/settings/users/{{ u.id }}/toggle"
+                        onsubmit="return confirm('Xác nhận thay đổi trạng thái tài khoản này?')">
+                    <button type="submit"
+                            class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                                   {% if u.is_active %}bg-gray-100 text-gray-600 hover:bg-gray-200
+                                   {% else %}bg-green-100 text-green-700 hover:bg-green-200{% endif %}">
+                      {% if u.is_active %}Khóa{% else %}Kích hoạt{% endif %}
+                    </button>
+                  </form>
+                  <!-- Reset password -->
+                  <form method="POST" action="/settings/users/{{ u.id }}/reset-password"
+                        onsubmit="return confirm('Reset mật khẩu tài khoản {{ u.full_name }}? Mật khẩu mới sẽ được hiển thị trong thông báo.')">
+                    <button type="submit"
+                            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors">
+                      Reset MK
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" class="px-4 py-8 text-center text-gray-400 text-sm">Chưa có tài khoản nào</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Modal tạo user ── -->
+    <div x-show="showCreateModal" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+         @click.self="showCreateModal = false">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md" @click.stop>
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 class="text-base font-semibold text-gray-800">Tạo tài khoản mới</h3>
+          <button @click="showCreateModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+        <form method="POST" action="/settings/users" class="px-6 py-5 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Họ và tên <span class="text-red-400">*</span></label>
+            <input type="text" name="full_name" required
+                   placeholder="Nguyễn Văn A"
+                   class="w-full border border-amber-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Username <span class="text-red-400">*</span></label>
+            <input type="text" name="username" required
+                   placeholder="nhanvien01"
+                   class="w-full border border-amber-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Vai trò <span class="text-red-400">*</span></label>
+            <select name="role_id" required
+                    class="w-full border border-amber-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 bg-white">
+              {% for role in roles %}
+              <option value="{{ role.id }}">{{ role.name }}{% if role.description %} — {{ role.description }}{% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Mật khẩu <span class="text-red-400">*</span></label>
+            <div class="relative">
+              <input :type="showPw ? 'text' : 'password'" name="password" required
+                     x-ref="pwInput"
+                     placeholder="Ít nhất 6 ký tự"
+                     class="w-full border border-amber-200 rounded-lg px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
+              <button type="button" @click="showPw = !showPw"
+                      class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <i :data-lucide="showPw ? 'eye-off' : 'eye'" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+          <div class="flex gap-3 pt-2">
+            <button type="submit"
+                    class="flex-1 flex items-center justify-center gap-2 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-semibold transition-colors">
+              <i data-lucide="user-check" class="w-4 h-4"></i>
+              Tạo tài khoản
+            </button>
+            <button type="button" @click="showCreateModal = false"
+                    class="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+              Hủy
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function settingsApp() {
+  // Check URL param for initial tab
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialTab = urlParams.get('tab') || 'info';
+
+  return {
+    activeTab: initialTab,
+    showCreateModal: false,
+    showPw: false,
+
+    bankAccount: '{{ settings.bank_account | default("") }}',
+    bankName: '{{ settings.bank_name | default("") }}',
+    bankOwner: '{{ settings.bank_owner | default("") }}',
+
+    getVietQRUrl() {
+      if (!this.bankAccount || !this.bankName) return '';
+      // VietQR quick URL format
+      const bank = encodeURIComponent(this.bankName);
+      const acc = encodeURIComponent(this.bankAccount);
+      const owner = encodeURIComponent(this.bankOwner || '');
+      return `https://img.vietqr.io/image/${bank}-${acc}-compact2.png?accountName=${owner}`;
+    },
+
+    init() {
+      this.$watch('showCreateModal', val => {
+        if (val) {
+          this.$nextTick(() => lucide.createIcons());
+        }
+      });
+      this.$watch('activeTab', () => {
+        this.$nextTick(() => lucide.createIcons());
+      });
+    }
+  };
+}
+</script>
+{% endblock %}

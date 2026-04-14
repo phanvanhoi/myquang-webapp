@@ -1,0 +1,17 @@
+{
+  "name": "myquang-webapp",
+  "version": "1.0.0",
+  "description": "Hệ thống quản lý quán ăn MyQuang",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "npx nodemon src/server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.22.1",
+    "express-session": "^1.19.0",
+    "node-sqlite3-wasm": "^0.8.56",
+    "nunjucks": "^3.2.4"
+  }
+}

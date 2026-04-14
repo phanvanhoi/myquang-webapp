@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}Thu Chi{% endblock %}
+{% block page_title %}Quản lý Thu Chi{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-5">
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- PHẦN 1: Tổng quan hôm nay                 -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+    <!-- Tổng thu -->
+    <div class="bg-white rounded-2xl shadow-sm border border-green-100 px-5 py-5">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-sm font-medium text-gray-500">Tổng thu hôm nay</p>
+        <div class="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+      </div>
+      <p class="text-2xl font-extrabold text-green-600">{{ total_income_today | currency }}</p>
+      <p class="text-xs text-gray-400 mt-1">Từ các hóa đơn đã thanh toán</p>
+    </div>
+
+    <!-- Tổng chi -->
+    <div class="bg-white rounded-2xl shadow-sm border border-red-100 px-5 py-5">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-sm font-medium text-gray-500">Tổng chi hôm nay</p>
+        <div class="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
+          </svg>
+        </div>
+      </div>
+      <p class="text-2xl font-extrabold text-red-500">{{ total_expense_today | currency }}</p>
+      <p class="text-xs text-gray-400 mt-1">Chi phí vận hành trong ngày</p>
+    </div>
+
+    <!-- Lợi nhuận -->
+    <div class="bg-white rounded-2xl shadow-sm border px-5 py-5
+                {% if profit_today >= 0 %}border-emerald-100{% else %}border-orange-100{% endif %}">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-sm font-medium text-gray-500">Lợi nhuận hôm nay</p>
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center
+                    {% if profit_today >= 0 %}bg-emerald-100{% else %}bg-orange-100{% endif %}">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 {% if profit_today >= 0 %}text-emerald-600{% else %}text-orange-500{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {% if profit_today >= 0 %}
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+            {% else %}
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
+            {% endif %}
+          </svg>
+        </div>
+      </div>
+      <p class="text-2xl font-extrabold {% if profit_today >= 0 %}text-emerald-600{% else %}text-orange-500{% endif %}">
+        {% if profit_today < 0 %}-{% endif %}{{ profit_today | abs | currency }}
+      </p>
+      <p class="text-xs text-gray-400 mt-1">Thu - Chi</p>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- PHẦN 2: Form thêm khoản chi               -->
+  <!-- ══════════════════════════════════════════ -->
+  <div
+    x-data="{ open: false }"
+    class="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden"
+  >
+    <button
+      type="button"
+      @click="open = !open"
+      class="w-full flex items-center justify-between px-5 py-4 hover:bg-amber-50/50 transition-colors"
+    >
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+        </div>
+        <span class="font-semibold text-gray-800">Ghi nhận khoản chi mới</span>
+      </div>
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-400 transition-transform" :class="open && 'rotate-180'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+      </svg>
+    </button>
+
+    <form
+      x-show="open"
+      x-cloak
+      method="post"
+      action="/finance/expenses"
+      class="px-5 pb-5 border-t border-gray-100"
+    >
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Danh mục <span class="text-red-500">*</span></label>
+          <select
+            name="category_id"
+            required
+            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          >
+            <option value="">-- Chọn danh mục --</option>
+            {% for cat in categories %}
+            <option value="{{ cat.id }}">{{ cat.name }}</option>
+            {% endfor %}
+          </select>
+          {% if not categories %}
+          <p class="text-xs text-amber-600 mt-1">
+            <a href="/finance/categories" class="underline">Tạo danh mục chi</a> trước khi ghi nhận
+          </p>
+          {% endif %}
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Số tiền (đ) <span class="text-red-500">*</span></label>
+          <input
+            type="number"
+            name="amount"
+            min="1"
+            step="1000"
+            required
+            placeholder="Ví dụ: 500000"
+            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Mô tả <span class="text-red-500">*</span></label>
+          <input
+            type="text"
+            name="description"
+            required
+            placeholder="Ví dụ: Mua nguyên liệu buổi sáng"
+            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Ngày thực hiện <span class="text-red-500">*</span></label>
+          <input
+            type="datetime-local"
+            name="occurred_at"
+            required
+            value=""
+            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+        </div>
+
+      </div>
+
+      <div class="mt-4 flex gap-3">
+        <button
+          type="submit"
+          class="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+          Ghi nhận
+        </button>
+        <button type="button" @click="open = false" class="text-sm text-gray-500 hover:text-gray-700 px-4 py-2 rounded-xl transition-colors">
+          Hủy
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- PHẦN 3: Danh sách chi phí trong tháng     -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+
+    <!-- Filter tháng + header -->
+    <div class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+      <h2 class="font-semibold text-gray-800">Chi phí trong tháng</h2>
+
+      <form method="get" action="/finance" class="flex items-center gap-2">
+        <input
+          type="month"
+          name="month"
+          value="{{ month }}"
+          class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+        />
+        <button
+          type="submit"
+          class="bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
+        >
+          Lọc
+        </button>
+        <a href="/finance/categories" class="text-sm text-amber-600 hover:text-amber-800 font-medium transition-colors">
+          Danh mục
+        </a>
+      </form>
+    </div>
+
+    {% if expenses %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 border-b border-gray-100">
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Ngày</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Danh mục</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Mô tả</th>
+            <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Số tiền</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Người ghi</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for exp in expenses %}
+          <tr class="hover:bg-amber-50/40 transition-colors">
+            <td class="px-4 py-3 text-gray-500 whitespace-nowrap">
+              {{ exp.occurred_at | date }}
+            </td>
+            <td class="px-4 py-3">
+              <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                {{ exp.category_name }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-gray-700">{{ exp.description }}</td>
+            <td class="px-4 py-3 text-right font-semibold text-red-600">
+              {{ exp.amount | currency }}
+            </td>
+            <td class="px-4 py-3 text-gray-500 text-xs">{{ exp.user_full_name or '—' }}</td>
+            <td class="px-4 py-3 text-center">
+              <div class="flex items-center justify-center gap-2">
+                {% if session.role == 'admin' %}
+                <a
+                  href="/finance/expenses/{{ exp.id }}/edit"
+                  class="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                >
+                  Sửa
+                </a>
+                <form
+                  method="post"
+                  action="/finance/expenses/{{ exp.id }}/delete"
+                  onsubmit="return confirm('Xóa khoản chi này?')"
+                  class="inline"
+                >
+                  <button type="submit" class="text-xs text-red-500 hover:text-red-700 font-medium transition-colors">
+                    Xóa
+                  </button>
+                </form>
+                {% else %}
+                <span class="text-xs text-gray-300">—</span>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr class="bg-red-50 border-t-2 border-red-200 font-semibold">
+            <td colspan="3" class="px-4 py-3 text-gray-700">
+              Tổng chi tháng {{ month }}
+            </td>
+            <td class="px-4 py-3 text-right text-red-600">
+              {{ total_expense | currency }}
+            </td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-14 text-gray-400">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
+      </svg>
+      <p class="font-medium text-sm">Chưa có khoản chi nào trong tháng {{ month }}</p>
+    </div>
+    {% endif %}
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Gán giờ hiện tại cho datetime-local input nếu chưa có
+  document.addEventListener('DOMContentLoaded', () => {
+    const dtInput = document.querySelector('input[name="occurred_at"]');
+    if (dtInput && !dtInput.value) {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      dtInput.value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    }
+  });
+  lucide.createIcons();
+</script>
+{% endblock %}

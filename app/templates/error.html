@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Lỗi{% endblock %}
+{% block page_title %}Lỗi{% endblock %}
+{% block content %}
+<div class="flex items-center justify-center min-h-64">
+  <div class="text-center">
+    <div class="text-6xl mb-4">⚠️</div>
+    <p class="text-gray-600 text-lg">{{ message }}</p>
+    <a href="/" class="mt-4 inline-block px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600">
+      Về trang chủ
+    </a>
+  </div>
+</div>
+{% endblock %}

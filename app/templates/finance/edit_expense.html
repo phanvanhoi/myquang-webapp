@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Sửa khoản chi{% endblock %}
+{% block page_title %}Sửa khoản chi{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto">
+  <div class="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+
+    <div class="px-5 py-4 border-b border-gray-100">
+      <h2 class="font-semibold text-gray-800">Chỉnh sửa khoản chi</h2>
+      <p class="text-xs text-gray-400 mt-0.5">Chỉ admin mới có quyền sửa</p>
+    </div>
+
+    <form method="post" action="/finance/expenses/{{ expense.id }}/edit" class="px-5 py-5 space-y-4">
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Danh mục <span class="text-red-500">*</span></label>
+        <select
+          name="category_id"
+          required
+          class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+        >
+          {% for cat in categories %}
+          <option value="{{ cat.id }}" {% if cat.id == expense.category_id %}selected{% endif %}>
+            {{ cat.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Số tiền (đ) <span class="text-red-500">*</span></label>
+        <input
+          type="number"
+          name="amount"
+          value="{{ expense.amount | int }}"
+          min="1"
+          step="1000"
+          required
+          class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Mô tả <span class="text-red-500">*</span></label>
+        <input
+          type="text"
+          name="description"
+          value="{{ expense.description }}"
+          required
+          class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Ngày thực hiện <span class="text-red-500">*</span></label>
+        <input
+          type="datetime-local"
+          name="occurred_at"
+          value="{{ expense.occurred_at | replace(' ', 'T') | truncate(16, true, '') if expense.occurred_at else '' }}"
+          required
+          class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+        />
+      </div>
+
+      <div class="flex gap-3 pt-2">
+        <button
+          type="submit"
+          class="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors"
+        >
+          Lưu thay đổi
+        </button>
+        <a
+          href="/finance"
+          class="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 px-5 py-2.5 rounded-xl transition-colors"
+        >
+          Hủy
+        </a>
+      </div>
+
+    </form>
+  </div>
+</div>
+{% endblock %}

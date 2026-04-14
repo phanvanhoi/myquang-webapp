@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+{% block title %}Báo cáo{% endblock %}
+{% block page_title %}Báo cáo tổng hợp{% endblock %}
+
+{% block content %}
+<div x-data="reportApp()" class="space-y-4">
+
+  <!-- Tab navigation -->
+  <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-1 flex gap-1 max-w-md">
+    <button @click="activeTab = 'revenue'"
+            :class="activeTab === 'revenue' ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-600 hover:bg-amber-50'"
+            class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all">
+      Doanh thu
+    </button>
+    <button @click="activeTab = 'items'"
+            :class="activeTab === 'items' ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-600 hover:bg-amber-50'"
+            class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all">
+      Món bán chạy
+    </button>
+    <button @click="activeTab = 'finance'"
+            :class="activeTab === 'finance' ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-600 hover:bg-amber-50'"
+            class="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all">
+      Thu Chi
+    </button>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       TAB: DOANH THU
+  ════════════════════════════════════════════ -->
+  <div x-show="activeTab === 'revenue'" x-cloak class="space-y-4">
+
+    <!-- Filter bar -->
+    <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Period buttons -->
+        <div class="flex rounded-lg border border-amber-200 overflow-hidden">
+          <button @click="revPeriod = 'day'; loadRevenue()"
+                  :class="revPeriod === 'day' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
+                  class="px-4 py-2 text-sm font-medium transition-colors border-r border-amber-200">
+            Ngày
+          </button>
+          <button @click="revPeriod = 'week'; loadRevenue()"
+                  :class="revPeriod === 'week' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
+                  class="px-4 py-2 text-sm font-medium transition-colors border-r border-amber-200">
+            Tuần
+          </button>
+          <button @click="revPeriod = 'month'; loadRevenue()"
+                  :class="revPeriod === 'month' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
+                  class="px-4 py-2 text-sm font-medium transition-colors">
+            Tháng
+          </button>
+        </div>
+
+        <!-- Date picker -->
+        <input type="date" x-model="revDate" @change="loadRevenue()"
+               class="border border-amber-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
+
+        <button @click="loadRevenue()"
+                class="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          Cập nhật
+        </button>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3" x-show="revSummary">
+      <div class="bg-white rounded-xl border border-amber-100 shadow-sm p-4 text-center">
+        <div class="text-xs text-gray-500 mb-1">Tổng doanh thu</div>
+        <div class="text-lg font-bold text-amber-600" x-text="formatCurrency(revSummary?.total || 0)"></div>
+      </div>
+      <div class="bg-white rounded-xl border border-amber-100 shadow-sm p-4 text-center">
+        <div class="text-xs text-gray-500 mb-1">Trung bình</div>
+        <div class="text-lg font-bold text-blue-600" x-text="formatCurrency(revSummary?.avg || 0)"></div>
+      </div>
+      <div class="bg-white rounded-xl border border-amber-100 shadow-sm p-4 text-center">
+        <div class="text-xs text-gray-500 mb-1">Cao nhất</div>
+        <div class="text-lg font-bold text-green-600" x-text="formatCurrency(revSummary?.max || 0)"></div>
+      </div>
+      <div class="bg-white rounded-xl border border-amber-100 shadow-sm p-4 text-center">
+        <div class="text-xs text-gray-500 mb-1">Thấp nhất</div>
+        <div class="text-lg font-bold text-red-500" x-text="formatCurrency(revSummary?.min || 0)"></div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-4">
+      <h3 class="text-sm font-semibold text-gray-700 mb-4">Biểu đồ doanh thu</h3>
+      <div class="h-72 relative">
+        <div x-show="revLoading" class="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
+          <div class="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <canvas id="revChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       TAB: MÓN BÁN CHẠY
+  ════════════════════════════════════════════ -->
+  <div x-show="activeTab === 'items'" x-cloak class="space-y-4">
+
+    <!-- Filter -->
+    <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-2 text-sm">
+          <label class="text-gray-600 font-medium">Từ:</label>
+          <input type="date" x-model="itemStart"
+                 class="border border-amber-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
+        </div>
+        <div class="flex items-center gap-2 text-sm">
+          <label class="text-gray-600 font-medium">Đến:</label>
+          <input type="date" x-model="itemEnd"
+                 class="border border-amber-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
+        </div>
+        <button @click="loadItems()"
+                class="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors">
+          <i data-lucide="search" class="w-4 h-4"></i>
+          Tìm kiếm
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- Bảng top 20 -->
+      <div class="bg-white rounded-xl shadow-sm border border-amber-100 overflow-hidden">
+        <div class="px-4 py-3 border-b border-amber-50 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700">Top 20 món bán chạy</h3>
+          <span class="text-xs text-gray-400" x-text="itemsData.length + ' món'"></span>
+        </div>
+        <div x-show="itemLoading" class="flex items-center justify-center py-12">
+          <div class="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <div x-show="!itemLoading" class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-amber-50 text-xs text-gray-500 uppercase">
+              <tr>
+                <th class="px-3 py-2 text-center w-8">#</th>
+                <th class="px-3 py-2 text-left">Tên món</th>
+                <th class="px-3 py-2 text-left hidden md:table-cell">Danh mục</th>
+                <th class="px-3 py-2 text-right">SL</th>
+                <th class="px-3 py-2 text-right">Doanh thu</th>
+                <th class="px-3 py-2 text-right hidden sm:table-cell">%</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+              <template x-for="(item, idx) in itemsData" :key="idx">
+                <tr class="hover:bg-amber-50/50 transition-colors">
+                  <td class="px-3 py-2 text-center text-gray-400 text-xs" x-text="idx + 1"></td>
+                  <td class="px-3 py-2 font-medium text-gray-800" x-text="item.name"></td>
+                  <td class="px-3 py-2 text-gray-500 hidden md:table-cell">
+                    <span class="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-xs" x-text="item.category"></span>
+                  </td>
+                  <td class="px-3 py-2 text-right font-semibold text-gray-700" x-text="item.qty"></td>
+                  <td class="px-3 py-2 text-right text-amber-600 font-medium" x-text="formatCurrency(item.revenue)"></td>
+                  <td class="px-3 py-2 text-right text-gray-500 text-xs hidden sm:table-cell" x-text="item.pct + '%'"></td>
+                </tr>
+              </template>
+              <template x-if="!itemLoading && itemsData.length === 0">
+                <tr>
+                  <td colspan="6" class="px-3 py-8 text-center text-gray-400 text-sm">Không có dữ liệu</td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Bar chart -->
+      <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-4">
+        <h3 class="text-sm font-semibold text-gray-700 mb-4">Biểu đồ số lượng</h3>
+        <div class="h-72">
+          <canvas id="itemChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       TAB: THU CHI
+  ════════════════════════════════════════════ -->
+  <div x-show="activeTab === 'finance'" x-cloak class="space-y-4">
+
+    <!-- Filter -->
+    <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-4">
+      <div class="flex items-center gap-3">
+        <label class="text-sm text-gray-600 font-medium">Tháng:</label>
+        <input type="month" x-model="finMonth"
+               class="border border-amber-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
+        <button @click="loadFinance()"
+                class="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          Cập nhật
+        </button>
+      </div>
+    </div>
+
+    <!-- 3 KPI lớn -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-white rounded-xl shadow-sm border border-green-100 p-5 text-center">
+        <div class="text-sm text-gray-500 mb-2">Tổng thu</div>
+        <div class="text-2xl font-bold text-green-600" x-text="formatCurrency(finData.total_income || 0)"></div>
+        <div class="text-xs text-gray-400 mt-1">doanh thu từ bán hàng</div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm border border-red-100 p-5 text-center">
+        <div class="text-sm text-gray-500 mb-2">Tổng chi</div>
+        <div class="text-2xl font-bold text-red-500" x-text="formatCurrency(finData.total_expense || 0)"></div>
+        <div class="text-xs text-gray-400 mt-1">các khoản chi phí</div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-5 text-center"
+           :class="(finData.profit || 0) >= 0 ? 'border border-amber-100' : 'border border-red-100'">
+        <div class="text-sm text-gray-500 mb-2">Lợi nhuận</div>
+        <div class="text-2xl font-bold"
+             :class="(finData.profit || 0) >= 0 ? 'text-amber-600' : 'text-red-500'"
+             x-text="formatCurrency(finData.profit || 0)"></div>
+        <div class="text-xs text-gray-400 mt-1">thu - chi</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- Pie chart chi theo danh mục -->
+      <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-4">
+        <h3 class="text-sm font-semibold text-gray-700 mb-4">Chi theo danh mục</h3>
+        <div class="h-64">
+          <canvas id="finPieChart"></canvas>
+        </div>
+        <!-- Legend -->
+        <div class="mt-3 space-y-1" x-show="finData.expense_by_cat && finData.expense_by_cat.length > 0">
+          <template x-for="(cat, idx) in (finData.expense_by_cat || [])" :key="idx">
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full inline-block" :style="'background:' + pieColors[idx % pieColors.length]"></span>
+                <span class="text-gray-600" x-text="cat.name"></span>
+              </div>
+              <span class="font-medium text-gray-700" x-text="formatCurrency(cat.total)"></span>
+            </div>
+          </template>
+        </div>
+        <div x-show="!finData.expense_by_cat || finData.expense_by_cat.length === 0"
+             class="flex items-center justify-center h-32 text-gray-400 text-sm">
+          Không có dữ liệu chi
+        </div>
+      </div>
+
+      <!-- Bảng chi tiết -->
+      <div class="bg-white rounded-xl shadow-sm border border-amber-100 overflow-hidden">
+        <div class="px-4 py-3 border-b border-amber-50 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700">Chi tiết chi phí</h3>
+          <span class="text-xs text-gray-400" x-text="(finData.expenses_detail || []).length + ' khoản'"></span>
+        </div>
+        <div class="overflow-x-auto max-h-72 overflow-y-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-amber-50 text-xs text-gray-500 uppercase sticky top-0">
+              <tr>
+                <th class="px-3 py-2 text-left">Ngày</th>
+                <th class="px-3 py-2 text-left">Danh mục</th>
+                <th class="px-3 py-2 text-left">Mô tả</th>
+                <th class="px-3 py-2 text-right">Số tiền</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+              <template x-for="(exp, idx) in (finData.expenses_detail || [])" :key="idx">
+                <tr class="hover:bg-amber-50/50 transition-colors">
+                  <td class="px-3 py-2 text-gray-500 text-xs whitespace-nowrap" x-text="exp.date"></td>
+                  <td class="px-3 py-2">
+                    <span class="px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-xs" x-text="exp.category"></span>
+                  </td>
+                  <td class="px-3 py-2 text-gray-700" x-text="exp.description"></td>
+                  <td class="px-3 py-2 text-right text-red-500 font-medium" x-text="formatCurrency(exp.amount)"></td>
+                </tr>
+              </template>
+              <template x-if="!finData.expenses_detail || finData.expenses_detail.length === 0">
+                <tr>
+                  <td colspan="4" class="px-3 py-8 text-center text-gray-400 text-sm">Không có chi phí trong tháng này</td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function reportApp() {
+  return {
+    activeTab: 'revenue',
+
+    // Revenue tab
+    revPeriod: 'week',
+    revDate: new Date().toISOString().slice(0, 10),
+    revLoading: false,
+    revSummary: null,
+    revChart: null,
+
+    // Items tab
+    itemStart: new Date(new Date().setDate(1)).toISOString().slice(0, 10),
+    itemEnd: new Date().toISOString().slice(0, 10),
+    itemLoading: false,
+    itemsData: [],
+    itemChart: null,
+
+    // Finance tab
+    finMonth: new Date().toISOString().slice(0, 7),
+    finLoading: false,
+    finData: {},
+    finPieChart: null,
+
+    pieColors: [
+      '#f59e0b','#3b82f6','#ef4444','#10b981','#8b5cf6',
+      '#f97316','#06b6d4','#84cc16','#ec4899','#6b7280'
+    ],
+
+    formatCurrency(v) {
+      if (v === null || v === undefined) return '0đ';
+      return new Intl.NumberFormat('vi-VN').format(Math.round(v)) + 'đ';
+    },
+
+    async loadRevenue() {
+      this.revLoading = true;
+      try {
+        const res = await fetch(`/reports/revenue?period=${this.revPeriod}&date=${this.revDate}`);
+        const d = await res.json();
+        this.revSummary = d.summary;
+        this.renderRevChart(d.labels, d.data);
+      } catch(e) { console.error(e); }
+      this.revLoading = false;
+    },
+
+    renderRevChart(labels, data) {
+      const canvas = document.getElementById('revChart');
+      if (!canvas) return;
+      if (this.revChart) this.revChart.destroy();
+      this.revChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Doanh thu',
+            data,
+            backgroundColor: 'rgba(245,158,11,0.7)',
+            borderColor: '#d97706',
+            borderWidth: 1,
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ' ' + new Intl.NumberFormat('vi-VN').format(ctx.raw) + 'đ'
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: v => v >= 1e6 ? (v/1e6).toFixed(1)+'tr' : v >= 1000 ? (v/1000).toFixed(0)+'k' : v,
+                font: { size: 11 }
+              },
+              grid: { color: 'rgba(0,0,0,0.05)' }
+            },
+            x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+          }
+        }
+      });
+    },
+
+    async loadItems() {
+      this.itemLoading = true;
+      try {
+        const res = await fetch(`/reports/items?start_date=${this.itemStart}&end_date=${this.itemEnd}`);
+        const d = await res.json();
+        this.itemsData = d.items || [];
+        this.renderItemChart(d.items || []);
+      } catch(e) { console.error(e); }
+      this.itemLoading = false;
+    },
+
+    renderItemChart(items) {
+      const canvas = document.getElementById('itemChart');
+      if (!canvas) return;
+      if (this.itemChart) this.itemChart.destroy();
+      const top10 = items.slice(0, 10);
+      this.itemChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: top10.map(i => i.name),
+          datasets: [{
+            label: 'Số lượng',
+            data: top10.map(i => i.qty),
+            backgroundColor: 'rgba(245,158,11,0.7)',
+            borderColor: '#d97706',
+            borderWidth: 1,
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { beginAtZero: true, ticks: { font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+            y: { ticks: { font: { size: 11 } }, grid: { display: false } }
+          }
+        }
+      });
+    },
+
+    async loadFinance() {
+      this.finLoading = true;
+      try {
+        const res = await fetch(`/reports/finance?month=${this.finMonth}`);
+        this.finData = await res.json();
+        this.$nextTick(() => this.renderPieChart(this.finData.expense_by_cat || []));
+      } catch(e) { console.error(e); }
+      this.finLoading = false;
+    },
+
+    renderPieChart(cats) {
+      const canvas = document.getElementById('finPieChart');
+      if (!canvas || cats.length === 0) return;
+      if (this.finPieChart) this.finPieChart.destroy();
+      this.finPieChart = new Chart(canvas.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: cats.map(c => c.name),
+          datasets: [{
+            data: cats.map(c => c.total),
+            backgroundColor: this.pieColors.slice(0, cats.length),
+            borderWidth: 2,
+            borderColor: '#fff',
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.label}: ${new Intl.NumberFormat('vi-VN').format(ctx.raw)}đ`
+              }
+            }
+          },
+          cutout: '60%',
+        }
+      });
+    },
+
+    init() {
+      this.loadRevenue();
+      // Load items and finance lazily when tab opened
+      this.$watch('activeTab', tab => {
+        if (tab === 'items' && this.itemsData.length === 0) this.loadItems();
+        if (tab === 'finance' && !this.finData.total_income && this.finData.total_income !== 0) this.loadFinance();
+      });
+    }
+  };
+}
+</script>
+{% endblock %}

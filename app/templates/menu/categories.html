@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Danh mục{% endblock %}
+{% block page_title %}Quản lý Danh mục{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-4">
+
+  <!-- Add category form -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-50">
+      <h2 class="font-semibold text-gray-800">Thêm danh mục mới</h2>
+    </div>
+    <form action="/menu/categories" method="post" class="p-5 flex flex-wrap gap-3">
+      <input
+        type="text" name="name" required placeholder="Tên danh mục" maxlength="50"
+        class="flex-1 min-w-[160px] h-11 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+      />
+      <input
+        type="text" name="description" placeholder="Mô tả (tuỳ chọn)"
+        class="flex-1 min-w-[160px] h-11 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+      />
+      <input
+        type="number" name="sort_order" value="0" min="0" placeholder="Thứ tự"
+        class="w-24 h-11 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+      />
+      <button type="submit"
+        class="h-11 px-5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors shadow-sm flex items-center gap-2">
+        <i data-lucide="plus" class="w-4 h-4"></i> Thêm
+      </button>
+    </form>
+  </div>
+
+  <!-- Category list -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+      <h2 class="font-semibold text-gray-800">Danh sách danh mục</h2>
+      <span class="text-xs text-gray-400">{{ categories | length }} danh mục</span>
+    </div>
+
+    {% if categories %}
+    <div class="divide-y divide-gray-50">
+      {% for cat in categories %}
+      <div x-data="{ editing: false }" class="px-5 py-3">
+        <!-- View mode -->
+        <div x-show="!editing" class="flex items-center gap-3">
+          <div class="flex-1 min-w-0">
+            <p class="font-medium text-sm text-gray-800">{{ cat.name }}</p>
+            {% if cat.description %}
+            <p class="text-xs text-gray-400 truncate">{{ cat.description }}</p>
+            {% endif %}
+          </div>
+          <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{ cat.item_count }} món</span>
+          <span class="text-xs text-gray-300">#{{ cat.sort_order }}</span>
+          <button @click="editing = true"
+            class="p-2 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors">
+            <i data-lucide="pencil" class="w-4 h-4"></i>
+          </button>
+          <form action="/menu/categories/{{ cat.id }}/delete" method="post"
+                @submit.prevent="confirm('Xóa danh mục {{ cat.name }}?') && $el.submit()">
+            <button type="submit" class="p-2 rounded-lg hover:bg-red-50 text-red-400 transition-colors">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- Edit mode (inline) -->
+        <form x-show="editing" action="/menu/categories/{{ cat.id }}/edit" method="post"
+              class="flex flex-wrap gap-2" x-cloak>
+          <input type="text" name="name" value="{{ cat.name }}" required maxlength="50"
+            class="flex-1 min-w-[140px] h-10 px-3 rounded-lg border border-brand-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          <input type="text" name="description" value="{{ cat.description or '' }}" placeholder="Mô tả"
+            class="flex-1 min-w-[140px] h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          <input type="number" name="sort_order" value="{{ cat.sort_order }}" min="0"
+            class="w-20 h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+          <button type="submit"
+            class="h-10 px-4 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 transition-colors">
+            Lưu
+          </button>
+          <button type="button" @click="editing = false"
+            class="h-10 px-4 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+            Hủy
+          </button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="py-12 text-center text-gray-400">
+      <i data-lucide="tags" class="w-10 h-10 mx-auto mb-2 opacity-30"></i>
+      <p class="text-sm">Chưa có danh mục nào.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="flex justify-start">
+    <a href="/menu" class="flex items-center gap-2 text-sm text-amber-700 hover:underline">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại Thực đơn
+    </a>
+  </div>
+
+</div>
+{% endblock %}

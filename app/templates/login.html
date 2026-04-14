@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đăng nhập — Quán Ăn MyQuang</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:  '#fffbeb',
+              100: '#fef3c7',
+              200: '#fde68a',
+              300: '#fcd34d',
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309',
+              800: '#92400e',
+              900: '#78350f',
+            }
+          },
+          fontFamily: {
+            sans: ['"Be Vietnam Pro"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Alpine.js -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-amber-50 to-amber-100 font-sans flex items-center justify-center px-4 py-8">
+
+  <div class="w-full max-w-sm">
+
+    <!-- Logo / Tên quán -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-500 shadow-lg mb-4">
+        <span class="text-3xl">🍜</span>
+      </div>
+      <h1 class="text-2xl font-bold text-amber-900">MyQuang</h1>
+      <p class="text-amber-600 text-sm mt-1">Hệ thống quản lý quán ăn</p>
+    </div>
+
+    <!-- Card đăng nhập -->
+    <div class="bg-white rounded-2xl shadow-xl p-8" x-data="{ showPass: false }">
+
+      <h2 class="text-lg font-semibold text-gray-800 mb-6 text-center">Đăng nhập</h2>
+
+      <!-- Thông báo lỗi -->
+      {% if error %}
+      <div class="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <form method="post" action="/login" class="space-y-5">
+
+        <!-- Username -->
+        <div>
+          <label for="username" class="block text-sm font-medium text-gray-700 mb-1.5">
+            Tên đăng nhập
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i data-lucide="user" class="w-4 h-4 text-gray-400"></i>
+            </div>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              autocomplete="username"
+              required
+              value="{{ username | default('') }}"
+              placeholder="Nhập tên đăng nhập"
+              class="w-full pl-10 pr-4 h-11 border border-gray-300 rounded-lg text-sm
+                     focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400
+                     placeholder:text-gray-400 transition"
+            />
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">
+            Mật khẩu
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i data-lucide="lock" class="w-4 h-4 text-gray-400"></i>
+            </div>
+            <input
+              id="password"
+              name="password"
+              :type="showPass ? 'text' : 'password'"
+              autocomplete="current-password"
+              required
+              placeholder="Nhập mật khẩu"
+              class="w-full pl-10 pr-11 h-11 border border-gray-300 rounded-lg text-sm
+                     focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400
+                     placeholder:text-gray-400 transition"
+            />
+            <button
+              type="button"
+              @click="showPass = !showPass"
+              class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition"
+              tabindex="-1"
+            >
+              <i :data-lucide="showPass ? 'eye-off' : 'eye'" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button
+          type="submit"
+          class="w-full h-11 bg-amber-500 hover:bg-amber-600 active:bg-amber-700
+                 text-white font-semibold rounded-lg text-sm
+                 transition-colors duration-150 shadow-sm
+                 flex items-center justify-center gap-2"
+        >
+          <i data-lucide="log-in" class="w-4 h-4"></i>
+          Đăng nhập
+        </button>
+
+      </form>
+    </div>
+
+    <!-- Footer -->
+    <p class="text-center text-xs text-amber-500 mt-6">
+      &copy; 2026 Quán Ăn MyQuang
+    </p>
+
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    // Re-run after Alpine updates the icon attribute
+    document.addEventListener('alpine:initialized', () => {
+      document.querySelectorAll('[\\:data-lucide]').forEach(el => {
+        el._x_bindings && lucide.createIcons();
+      });
+    });
+    document.addEventListener('alpine:mutation', () => {
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

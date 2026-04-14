@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Order {{ order.order_code }}{% endblock %}
+{% block page_title %}Order {{ order.order_code }} — {{ order.table_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-4">
+
+  <!-- ── Order info bar ── -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-4 items-center justify-between">
+    <div class="flex flex-wrap gap-4">
+      <div>
+        <p class="text-xs text-gray-400">Bàn</p>
+        <p class="font-bold text-gray-800">{{ order.table_name }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-gray-400">Mã bàn</p>
+        <p class="font-medium text-gray-700 font-mono">{{ order.table_code }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-gray-400">Thời gian mở</p>
+        <p class="font-medium text-gray-700">{{ order.created_at | dt }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-gray-400">Trạng thái</p>
+        {% if order.status == 'open' %}
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Mở</span>
+        {% elif order.status == 'serving' %}
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Đang phục vụ</span>
+        {% elif order.status == 'completed' %}
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Hoàn thành</span>
+        {% elif order.status == 'cancelled' %}
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-600">Đã hủy</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Actions -->
+    {% if order.status in ('open', 'serving') %}
+    <div class="flex gap-2 flex-wrap">
+      <a href="/orders/{{ order.id }}/add-items"
+         class="h-10 px-4 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-semibold flex items-center gap-2 transition-colors">
+        <i data-lucide="plus" class="w-4 h-4"></i> Gọi thêm
+      </a>
+
+      <!-- Send to kitchen -->
+      {% if pending_count %}
+      <form action="/orders/{{ order.id }}/send-to-kitchen" method="post">
+        <button type="submit"
+          class="h-10 px-4 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold flex items-center gap-2 transition-colors">
+          <i data-lucide="flame" class="w-4 h-4"></i> Gửi bếp ({{ pending_count }})
+        </button>
+      </form>
+      {% endif %}
+
+      <a href="/payments/{{ order.id }}"
+         class="h-10 px-4 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold flex items-center gap-2 transition-colors">
+        <i data-lucide="credit-card" class="w-4 h-4"></i> Thanh toán
+      </a>
+
+      <!-- Cancel order -->
+      <form action="/orders/{{ order.id }}/cancel" method="post"
+            @submit.prevent.once="confirm('Hủy toàn bộ order này?') && $el.submit()" x-data>
+        <button type="submit"
+          class="h-10 px-4 rounded-lg border border-red-300 hover:bg-red-50 text-red-600 text-sm font-medium flex items-center gap-2 transition-colors">
+          <i data-lucide="x-circle" class="w-4 h-4"></i> Hủy order
+        </button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── Order items table ── -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+      <h2 class="font-semibold text-gray-800">Danh sách món</h2>
+      <span class="text-xs text-gray-400">{{ items | length }} dòng</span>
+    </div>
+
+    {% if items %}
+    <div class="divide-y divide-gray-50">
+      {% for oi in items %}
+      <div class="px-5 py-3 flex items-start gap-3
+          {% if oi.status == 'cancelled' %}opacity-40{% endif %}">
+
+        <!-- Status dot -->
+        <div class="mt-1 shrink-0">
+          {% if oi.status == 'pending' %}
+          <span class="w-2.5 h-2.5 rounded-full bg-gray-300 inline-block" title="Chờ gửi"></span>
+          {% elif oi.status == 'preparing' %}
+          <span class="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block" title="Đang làm"></span>
+          {% elif oi.status == 'served' %}
+          <span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" title="Đã phục vụ"></span>
+          {% elif oi.status == 'cancelled' %}
+          <span class="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" title="Đã hủy"></span>
+          {% endif %}
+        </div>
+
+        <!-- Item info -->
+        <div class="flex-1 min-w-0">
+          <p class="font-medium text-sm text-gray-800">{{ oi.item_name }}</p>
+          {% if oi.note %}
+          <p class="text-xs text-gray-400 mt-0.5 italic">{{ oi.note }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Qty + price -->
+        <div class="text-right shrink-0">
+          <p class="text-sm text-gray-600">x{{ oi.quantity }} × {{ oi.unit_price | currency }}</p>
+          <p class="font-bold text-brand-500">{{ oi.subtotal | currency }}</p>
+        </div>
+
+        <!-- Actions: cancel item (admin/cashier only) -->
+        {% if order.status in ('open', 'serving') and session.role in ('admin', 'cashier') and oi.status != 'cancelled' %}
+        <div class="shrink-0 flex gap-1">
+          <div x-data="{ open: false }">
+            <button @click="open = !open"
+              class="p-2 rounded-lg hover:bg-red-50 text-red-400 transition-colors" title="Hủy món">
+              <i data-lucide="ban" class="w-4 h-4"></i>
+            </button>
+            <div x-show="open" x-cloak
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+              <div class="bg-white rounded-2xl p-5 w-full max-w-sm shadow-xl space-y-4">
+                <h3 class="font-semibold text-gray-800">Hủy món: {{ oi.item_name }}</h3>
+                <p class="text-sm text-gray-500">Xác nhận hủy món này khỏi order?</p>
+                <div class="flex gap-3">
+                  <button type="button" @click="open = false"
+                    class="flex-1 h-10 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">Thôi</button>
+                  <form action="/orders/{{ order.id }}/items/{{ oi.id }}/cancel" method="post" class="flex-1">
+                    <button type="submit"
+                      class="w-full h-10 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-semibold">Hủy món</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="py-12 text-center text-gray-400 text-sm">Chưa có món nào.</div>
+    {% endif %}
+
+    <!-- Totals footer -->
+    <div class="border-t border-gray-100 px-5 py-4 space-y-1.5 bg-gray-50">
+      <div class="flex justify-between text-sm text-gray-600">
+        <span>Tổng cộng</span>
+        <span class="font-semibold">{{ order.total_amount | currency }}</span>
+      </div>
+      {% if order.discount_amount > 0 %}
+      <div class="flex justify-between text-sm text-gray-500">
+        <span>Giảm giá {% if order.discount_reason %}({{ order.discount_reason }}){% endif %}</span>
+        <span class="text-red-500">-{{ order.discount_amount | currency }}</span>
+      </div>
+      {% endif %}
+      <div class="flex justify-between text-base font-extrabold text-brand-600 pt-1">
+        <span>Thành tiền</span>
+        <span>{{ order.final_amount | currency }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Back -->
+  <a href="/orders" class="flex items-center gap-2 text-sm text-amber-700 hover:underline">
+    <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại danh sách
+  </a>
+
+</div>
+{% endblock %}

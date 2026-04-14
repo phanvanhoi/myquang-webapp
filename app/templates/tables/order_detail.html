@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+{% block title %}{{ table.name }} — Order{% endblock %}
+{% block page_title %}{{ table.name }}{% endblock %}
+
+{% block head %}
+<style>
+  /* POS layout: full height minus header */
+  .pos-layout { height: calc(100vh - 57px); }
+  @media (max-width: 1023px) { .pos-layout { height: auto; } }
+
+  /* Ẩn scrollbar nhưng vẫn scroll được */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Item card click effect */
+  .menu-card { transition: transform .1s, box-shadow .1s; }
+  .menu-card:active { transform: scale(.96); }
+
+  /* Status pill colors */
+  .pill-pending   { background:#fef9c3; color:#92400e; }
+  .pill-preparing { background:#ffedd5; color:#9a3412; }
+  .pill-served    { background:#dcfce7; color:#166534; }
+  .pill-cancelled { background:#f3f4f6; color:#6b7280; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% if not order %}
+{# ── Bàn chưa có order ── #}
+<div class="flex flex-col items-center justify-center py-24 text-center">
+  <div class="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mb-5">
+    <i data-lucide="clipboard-x" class="w-10 h-10 text-amber-400"></i>
+  </div>
+  <h2 class="text-lg font-semibold text-gray-700 mb-1">{{ table.name }} đang trống</h2>
+  <p class="text-sm text-gray-400 mb-6">Bàn chưa có order nào đang mở.</p>
+  <a href="/tables"
+     class="inline-flex items-center gap-2 h-10 px-5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl transition shadow-sm">
+    <i data-lucide="arrow-left" class="w-4 h-4"></i> Về sơ đồ bàn
+  </a>
+</div>
+
+{% else %}
+
+{# ══════════════════════════════════════════════════════════
+   POS LAYOUT — 2 cột, full height
+   Left  : Menu browser
+   Right : Live order panel
+══════════════════════════════════════════════════════════ #}
+<script>
+  const _posMenuItems = {{ menuItems | tojson | safe }};
+  const _posOrderId   = {{ order.id }};
+</script>
+
+<div x-data="posOrder(_posMenuItems, _posOrderId)"
+     class="pos-layout -m-4 flex flex-col lg:flex-row overflow-hidden">
+
+  {# ══ LEFT: Menu browser ══ #}
+  <div class="flex-1 flex flex-col min-h-0 border-r border-gray-100">
+
+    {# Top bar: breadcrumb + search #}
+    <div class="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 shrink-0">
+      <a href="/tables" class="text-gray-400 hover:text-amber-600 transition-colors">
+        <i data-lucide="grid-2x2" class="w-4 h-4"></i>
+      </a>
+      <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-gray-300"></i>
+      <span class="text-sm font-semibold text-gray-700">{{ table.name }}</span>
+      <span class="text-xs px-2 py-0.5 rounded-full font-medium
+        {% if order.status == 'open' %}bg-amber-100 text-amber-700
+        {% else %}bg-green-100 text-green-700{% endif %}">
+        {% if order.status == 'open' %}Đang mở{% else %}Đang phục vụ{% endif %}
+      </span>
+      <span class="text-xs text-gray-400 ml-auto hidden sm:block">{{ order.order_code }}</span>
+
+      {# Search #}
+      <div class="relative w-40 sm:w-56">
+        <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400"></i>
+        <input type="text" x-model="search" placeholder="Tìm món..."
+               class="w-full pl-8 pr-3 h-8 text-xs rounded-lg border border-gray-200 focus:outline-none focus:ring-1 focus:ring-amber-400 bg-gray-50"/>
+      </div>
+    </div>
+
+    {# Category tabs #}
+    <div class="flex gap-2 px-4 py-2.5 overflow-x-auto no-scrollbar bg-white border-b border-gray-100 shrink-0">
+      <button @click="activeCat = 0"
+              :class="activeCat===0 ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:border-amber-300'"
+              class="shrink-0 h-8 px-3.5 rounded-full text-xs font-semibold border transition-colors">
+        Tất cả
+      </button>
+      {% for cat in menuCategories %}
+      <button @click="activeCat = {{ cat.id }}"
+              :class="activeCat==={{ cat.id }} ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:border-amber-300'"
+              class="shrink-0 h-8 px-3.5 rounded-full text-xs font-semibold border transition-colors">
+        {{ cat.name }}
+      </button>
+      {% endfor %}
+    </div>
+
+    {# Item grid — scrollable #}
+    <div class="flex-1 overflow-y-auto no-scrollbar p-3 bg-gray-50">
+      <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5">
+
+        <template x-for="item in filteredItems" :key="item.id">
+          <div @click="addItem(item)"
+               :class="item.is_available ? 'cursor-pointer hover:border-amber-400 hover:shadow-md' : 'opacity-40 cursor-not-allowed'"
+               class="menu-card bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex flex-col gap-1.5 select-none">
+
+            {# Badge số lượng trong cart #}
+            <div class="flex items-start justify-between gap-1">
+              <span class="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-medium truncate"
+                    x-text="item.category_name"></span>
+              <span x-show="cartCount(item.id) > 0"
+                    class="shrink-0 w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center"
+                    x-text="cartCount(item.id)"></span>
+            </div>
+
+            <div class="font-semibold text-sm text-gray-800 leading-snug" x-text="item.name"></div>
+
+            <div class="mt-auto flex items-center justify-between pt-1">
+              <span class="text-base font-bold text-amber-600" x-text="fmt(item.base_price)"></span>
+              <div x-show="item.is_available"
+                   :class="cartCount(item.id) > 0 ? 'bg-amber-500' : 'bg-gray-100'"
+                   class="w-7 h-7 rounded-full flex items-center justify-center transition-colors">
+                <i :data-lucide="cartCount(item.id) > 0 ? 'plus' : 'plus'"
+                   :class="cartCount(item.id) > 0 ? 'text-white' : 'text-gray-500'"
+                   class="w-3.5 h-3.5"></i>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <div x-show="filteredItems.length === 0"
+             class="col-span-full py-16 text-center text-gray-400">
+          <i data-lucide="search-x" class="w-10 h-10 mx-auto mb-2 opacity-30"></i>
+          <p class="text-sm">Không tìm thấy món</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ══ RIGHT: Order panel ══ #}
+  <div class="lg:w-[360px] xl:w-[400px] shrink-0 flex flex-col bg-white">
+
+    {# Order header #}
+    <div class="px-4 py-3 border-b border-gray-100 shrink-0">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="font-bold text-gray-800">{{ table.name }}</div>
+          <div class="text-xs text-gray-400">{{ order.order_code }} · {{ order.guest_count }} khách · {{ order.created_at | dt }}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-gray-400">Tổng</div>
+          <div class="text-xl font-extrabold text-amber-600" x-text="fmt(grandTotal)"></div>
+        </div>
+      </div>
+    </div>
+
+    {# Order items — scrollable #}
+    <div class="flex-1 overflow-y-auto no-scrollbar divide-y divide-gray-50">
+
+      {# Các món ĐÃ gửi bếp (từ server) #}
+      {% for item in items %}
+      {% if item.status != 'cancelled' %}
+      <div class="flex items-center gap-3 px-4 py-2.5">
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-gray-700 truncate">
+            {{ item.menu_item.name if item.menu_item else item.item_name }}
+          </div>
+          {% if item.note %}
+          <div class="text-xs text-amber-600 italic truncate">{{ item.note }}</div>
+          {% endif %}
+        </div>
+        <div class="text-xs text-gray-400 shrink-0">×{{ item.quantity }}</div>
+        <div class="text-sm font-semibold text-gray-700 shrink-0 w-20 text-right">
+          {{ item.subtotal | currency }}
+        </div>
+        <span class="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full
+          {% if item.status == 'pending' %}pill-pending
+          {% elif item.status == 'preparing' %}pill-preparing
+          {% elif item.status == 'served' %}pill-served
+          {% else %}pill-cancelled{% endif %}">
+          {% if item.status == 'pending' %}Chờ
+          {% elif item.status == 'preparing' %}Đang làm
+          {% elif item.status == 'served' %}Đã lên
+          {% else %}Huỷ{% endif %}
+        </span>
+      </div>
+      {% endif %}
+      {% endfor %}
+
+      {# Divider nếu có cả món cũ lẫn mới #}
+      <template x-if="cart.length > 0 && {{ items | length }} > 0">
+        <div class="px-4 py-1.5 bg-amber-50">
+          <p class="text-[11px] font-semibold text-amber-600 uppercase tracking-wide">Sắp gửi bếp</p>
+        </div>
+      </template>
+
+      {# Món mới trong cart (chưa gửi) #}
+      <template x-for="(entry, idx) in cart" :key="entry.item_id">
+        <div class="flex items-center gap-2 px-4 py-2.5">
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-gray-800 truncate" x-text="entry.name"></div>
+            <input type="text" x-model="entry.note" placeholder="Ghi chú..."
+                   class="mt-0.5 w-full h-6 text-xs px-2 rounded border border-gray-200 focus:outline-none focus:ring-1 focus:ring-amber-400 text-gray-500"/>
+          </div>
+
+          {# Qty controls #}
+          <div class="flex items-center gap-1 shrink-0">
+            <button @click="updateQty(idx, -1)"
+                    class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-red-50 hover:border-red-300 hover:text-red-500 transition-colors">
+              <i data-lucide="minus" class="w-3 h-3"></i>
+            </button>
+            <span class="w-6 text-center text-sm font-bold text-gray-800" x-text="entry.qty"></span>
+            <button @click="updateQty(idx, 1)"
+                    class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-green-50 hover:border-green-300 hover:text-green-600 transition-colors">
+              <i data-lucide="plus" class="w-3 h-3"></i>
+            </button>
+          </div>
+
+          <div class="text-sm font-bold text-amber-600 shrink-0 w-16 text-right"
+               x-text="fmt(entry.price * entry.qty)"></div>
+          <button @click="removeItem(idx)"
+                  class="shrink-0 w-6 h-6 flex items-center justify-center text-gray-300 hover:text-red-400 transition-colors">
+            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </template>
+
+      {# Empty state #}
+      <template x-if="cart.length === 0 && {{ items | length }} === 0">
+        <div class="py-16 text-center text-gray-300">
+          <i data-lucide="shopping-cart" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
+          <p class="text-sm">Chọn món từ bên trái</p>
+        </div>
+      </template>
+    </div>
+
+    {# Footer actions #}
+    <div class="border-t border-gray-100 p-4 space-y-2 shrink-0">
+
+      {# Tổng #}
+      <div class="flex items-center justify-between text-sm mb-1">
+        <span class="text-gray-500">Đã order</span>
+        <span class="font-semibold text-gray-700">{{ order.total_amount | currency }}</span>
+      </div>
+      <template x-if="cart.length > 0">
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-gray-500">Thêm mới</span>
+          <span class="font-semibold text-amber-600" x-text="fmt(newTotal)"></span>
+        </div>
+      </template>
+      <div class="flex items-center justify-between font-bold pt-1 border-t border-gray-100">
+        <span class="text-gray-800">Tổng cộng</span>
+        <span class="text-lg text-amber-600" x-text="fmt(grandTotal)"></span>
+      </div>
+
+      {# Gửi bếp #}
+      <button @click="sendToKitchen()"
+              :disabled="cart.length === 0"
+              :class="cart.length > 0
+                ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'"
+              class="w-full h-11 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
+        <i data-lucide="send" class="w-4 h-4"></i>
+        <span x-text="cart.length > 0 ? 'Gửi bếp (' + cart.length + ' loại)' : 'Chưa có món mới'"></span>
+      </button>
+
+      {# Thanh toán #}
+      <a href="/payments/{{ order.id }}"
+         class="w-full h-11 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold
+                flex items-center justify-center gap-2 transition-colors shadow-sm">
+        <i data-lucide="credit-card" class="w-4 h-4"></i>
+        Thanh toán
+      </a>
+
+      {# Hủy order #}
+      {% if session.role == 'admin' or session.role == 'cashier' %}
+      <div x-data="{ open: false }">
+        <button @click="open = true"
+                class="w-full h-9 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 text-xs font-medium
+                       flex items-center justify-center gap-1.5 transition-colors">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          Hủy order
+        </button>
+
+        <div x-show="open" x-cloak x-transition
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+             @click.self="open = false">
+          <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 text-center" @click.stop>
+            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <i data-lucide="alert-triangle" class="w-6 h-6 text-red-500"></i>
+            </div>
+            <h3 class="font-semibold text-gray-800 mb-1">Hủy order?</h3>
+            <p class="text-sm text-gray-500 mb-5">
+              Order <strong>{{ order.order_code }}</strong> sẽ bị hủy và bàn trở về trạng thái trống.
+            </p>
+            <div class="flex gap-2">
+              <button @click="open = false"
+                      class="flex-1 h-10 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50 transition">
+                Không
+              </button>
+              <form action="/tables/{{ table.id }}/close" method="post" class="flex-1">
+                <button type="submit"
+                        class="w-full h-10 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition">
+                  Hủy order
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+</div>
+
+{% endif %}{# end if order #}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function posOrder(menuItems, orderId) {
+  const existingTotal = {{ order.total_amount if order else 0 }};
+  return {
+    menuItems,
+    orderId,
+    cart: [],
+    search: '',
+    activeCat: 0,
+
+    get filteredItems() {
+      return this.menuItems.filter(item => {
+        const catOk  = this.activeCat === 0 || item.category_id === this.activeCat;
+        const txtOk  = item.name.toLowerCase().includes(this.search.toLowerCase());
+        return catOk && txtOk;
+      });
+    },
+
+    get newTotal() {
+      return this.cart.reduce((s, e) => s + e.price * e.qty, 0);
+    },
+
+    get grandTotal() {
+      return existingTotal + this.newTotal;
+    },
+
+    fmt(val) {
+      return new Intl.NumberFormat('vi-VN').format(val || 0) + 'đ';
+    },
+
+    cartCount(itemId) {
+      const e = this.cart.find(x => x.item_id === itemId);
+      return e ? e.qty : 0;
+    },
+
+    addItem(item) {
+      if (!item.is_available) return;
+      const existing = this.cart.find(e => e.item_id === item.id);
+      if (existing) {
+        existing.qty++;
+      } else {
+        this.cart.push({ item_id: item.id, name: item.name, price: item.base_price, qty: 1, note: '' });
+      }
+      this.$nextTick(() => lucide.createIcons());
+    },
+
+    removeItem(idx) {
+      this.cart.splice(idx, 1);
+    },
+
+    updateQty(idx, delta) {
+      const entry = this.cart[idx];
+      const newQty = entry.qty + delta;
+      if (newQty <= 0) {
+        this.cart.splice(idx, 1);
+      } else {
+        entry.qty = newQty;
+      }
+    },
+
+    async sendToKitchen() {
+      if (this.cart.length === 0) return;
+      const payload = this.cart.map(e => ({
+        item_id: e.item_id, quantity: e.qty, note: e.note || '',
+      }));
+      try {
+        const resp = await fetch(`/orders/${this.orderId}/add-items`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: payload }),
+        });
+        const data = await resp.json();
+        if (data.success) {
+          window.location.reload();
+        } else {
+          alert(data.error || 'Có lỗi xảy ra.');
+        }
+      } catch (e) {
+        alert('Lỗi kết nối. Vui lòng thử lại.');
+      }
+    },
+  };
+}
+
+document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+document.addEventListener('alpine:mutated',   () => lucide.createIcons());
+</script>
+{% endblock %}

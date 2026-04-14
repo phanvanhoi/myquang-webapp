@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}Thực đơn{% endblock %}
+{% block page_title %}Quản lý Thực đơn{% endblock %}
+
+{% block content %}
+<script>
+  function menuApp() {
+    return {
+      search: '',
+      activeCat: 0,
+      items: {{ items | tojson | safe }},
+      get filtered() {
+        return this.items.filter(item => {
+          const matchCat  = this.activeCat === 0 || item.category_id === this.activeCat;
+          const matchText = item.name.toLowerCase().includes(this.search.toLowerCase());
+          return matchCat && matchText;
+        });
+      },
+      async toggleItem(item) {
+        try {
+          const resp = await fetch('/menu/items/' + item.id + '/toggle', { method: 'POST' });
+          const data = await resp.json();
+          if (data.success) { item.is_available = data.is_available; }
+        } catch(e) { alert('Có lỗi xảy ra, vui lòng thử lại'); }
+      }
+    };
+  }
+</script>
+<div x-data="menuApp()">
+
+  <!-- ── Header bar ── -->
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <!-- Search -->
+    <div class="relative flex-1 min-w-[200px] max-w-sm">
+      <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
+      <input
+        type="text"
+        x-model="search"
+        placeholder="Tìm món ăn..."
+        class="w-full pl-9 pr-3 h-10 rounded-lg border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+      />
+    </div>
+    <!-- Actions -->
+    <div class="flex gap-2">
+      <a href="/menu/categories"
+         class="flex items-center gap-2 h-10 px-4 rounded-lg border border-amber-300 text-amber-700 text-sm font-medium hover:bg-amber-50 transition-colors">
+        <i data-lucide="tags" class="w-4 h-4"></i>
+        <span class="hidden sm:inline">Danh mục</span>
+      </a>
+      <a href="/menu/items/new"
+         class="flex items-center gap-2 h-10 px-4 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors shadow-sm">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        Thêm món
+      </a>
+    </div>
+  </div>
+
+  <div class="flex gap-4">
+    <!-- ── Sidebar: Category filter ── -->
+    <aside class="hidden md:flex flex-col gap-1 w-44 shrink-0">
+      <button
+        @click="activeCat = 0"
+        :class="activeCat === 0 ? 'bg-brand-500 text-white' : 'bg-white text-gray-700 hover:bg-amber-50'"
+        class="flex items-center gap-2 px-3 h-10 rounded-lg text-sm font-medium transition-colors border border-transparent w-full text-left"
+      >
+        <i data-lucide="layers" class="w-4 h-4 shrink-0"></i>
+        Tất cả
+      </button>
+
+      {% for cat in categories %}
+      <button
+        @click="activeCat = {{ cat.id }}"
+        :class="activeCat === {{ cat.id }} ? 'bg-brand-500 text-white' : 'bg-white text-gray-700 hover:bg-amber-50'"
+        class="flex items-center gap-2 px-3 h-10 rounded-lg text-sm font-medium transition-colors border border-transparent w-full text-left"
+      >
+        <i data-lucide="tag" class="w-4 h-4 shrink-0"></i>
+        <span class="truncate">{{ cat.name }}</span>
+      </button>
+      {% endfor %}
+    </aside>
+
+    <!-- ── Category tabs (mobile) ── -->
+    <div class="md:hidden flex gap-2 overflow-x-auto pb-1 mb-2 scrollbar-hide w-full shrink-0">
+      <button
+        @click="activeCat = 0"
+        :class="activeCat === 0 ? 'bg-brand-500 text-white' : 'bg-white text-gray-600'"
+        class="shrink-0 h-8 px-3 rounded-full text-xs font-medium border transition-colors"
+      >Tất cả</button>
+      {% for cat in categories %}
+      <button
+        @click="activeCat = {{ cat.id }}"
+        :class="activeCat === {{ cat.id }} ? 'bg-brand-500 text-white' : 'bg-white text-gray-600'"
+        class="shrink-0 h-8 px-3 rounded-full text-xs font-medium border transition-colors"
+      >{{ cat.name }}</button>
+      {% endfor %}
+    </div>
+
+    <!-- ── Main: Items grid ── -->
+    <div class="flex-1 min-w-0">
+      <!-- Count -->
+      <p class="text-xs text-gray-400 mb-3">
+        <span x-text="filtered.length"></span> món
+      </p>
+
+      <!-- Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+        <template x-for="item in filtered" :key="item.id">
+          <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+            <!-- Card body -->
+            <div class="p-3 flex-1 flex flex-col gap-1">
+              <!-- Category badge -->
+              <span class="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 w-fit" x-text="item.category_name"></span>
+              <!-- Name -->
+              <div class="font-semibold text-sm text-gray-800 leading-snug mt-1" x-text="item.name"></div>
+              <!-- Description -->
+              <div class="text-xs text-gray-400 line-clamp-2" x-text="item.description || ''"></div>
+              <!-- Price -->
+              <div class="text-lg font-bold text-brand-500 mt-auto pt-1" x-text="formatPrice(item.base_price)"></div>
+            </div>
+
+            <!-- Status + Actions -->
+            <div class="border-t border-gray-50 px-3 py-2 flex items-center justify-between gap-2">
+              <!-- Availability badge -->
+              <span
+                :class="item.is_available ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'"
+                class="text-xs font-medium px-2 py-0.5 rounded-full"
+                x-text="item.is_available ? 'Có sẵn' : 'Tạm hết'"
+              ></span>
+
+              <!-- Actions -->
+              <div class="flex gap-1">
+                <!-- Toggle availability -->
+                <button type="button"
+                  @click.stop="toggleItem(item)"
+                  :title="item.is_available ? 'Đánh dấu tạm hết' : 'Đánh dấu có sẵn'"
+                  class="p-2 rounded-lg hover:bg-amber-50 text-amber-600 transition-colors">
+                  <i :data-lucide="item.is_available ? 'eye-off' : 'eye'" class="w-4 h-4"></i>
+                </button>
+                {% if session.role == 'admin' %}
+                <!-- Edit -->
+                <a :href="'/menu/items/' + item.id + '/edit'"
+                   class="p-2 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors" title="Sửa">
+                  <i data-lucide="pencil" class="w-4 h-4"></i>
+                </a>
+                <!-- Delete -->
+                <form :action="'/menu/items/' + item.id + '/delete'" method="post"
+                      @submit.prevent="confirm('Xóa món ' + item.name + '?') && $el.submit()">
+                  <button type="submit"
+                    class="p-2 rounded-lg hover:bg-red-50 text-red-500 transition-colors" title="Xóa">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Empty state -->
+      <div x-show="filtered.length === 0" class="text-center py-16 text-gray-400">
+        <i data-lucide="utensils" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
+        <p class="text-sm">Không có món nào.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+
+  function formatPrice(val) {
+    return new Intl.NumberFormat('vi-VN').format(val) + 'đ';
+  }
+
+  // Expose toggleItem as a method reachable from the Alpine scope.
+  // We patch it onto the Alpine component via Alpine.data or a global helper.
+  // Because the component is inline x-data, we wire it up as a global function.
+  async function toggleItem(item) {
+    try {
+      const resp = await fetch('/menu/items/' + item.id + '/toggle', { method: 'POST' });
+      const data = await resp.json();
+      if (data.success) {
+        item.is_available = data.is_available;
+        // Re-init Lucide after DOM might change
+        this.$nextTick(() => lucide.createIcons());
+      }
+    } catch(e) {
+      alert('Có lỗi xảy ra, vui lòng thử lại');
+    }
+  }
+</script>
+{% endblock %}

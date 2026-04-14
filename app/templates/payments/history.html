@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Lịch sử hóa đơn{% endblock %}
+{% block page_title %}Lịch sử hóa đơn{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-5">
+
+  <!-- ── Filter ── -->
+  <div class="bg-white rounded-2xl shadow-sm border border-amber-100 px-5 py-4">
+    <form method="get" action="/payments/history" class="flex flex-wrap items-end gap-3">
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Chọn ngày</label>
+        <input
+          type="date"
+          name="date_filter"
+          value="{{ date_filter }}"
+          class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+        />
+      </div>
+      <button
+        type="submit"
+        class="bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+      >
+        Xem
+      </button>
+      <a
+        href="/payments/history"
+        class="text-sm text-gray-500 hover:text-gray-700 py-2 transition-colors"
+      >
+        Hôm nay
+      </a>
+    </form>
+  </div>
+
+  <!-- ── Summary cards ── -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div class="bg-white rounded-xl border border-amber-100 shadow-sm px-4 py-3 text-center">
+      <p class="text-xs text-gray-400 mb-0.5">Số hóa đơn</p>
+      <p class="text-2xl font-bold text-amber-700">{{ orders | length }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-amber-100 shadow-sm px-4 py-3 text-center">
+      <p class="text-xs text-gray-400 mb-0.5">Tổng doanh thu</p>
+      <p class="text-xl font-bold text-green-600">{{ total_revenue | currency }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-amber-100 shadow-sm px-4 py-3 text-center">
+      <p class="text-xs text-gray-400 mb-0.5">Tiền mặt</p>
+      <p class="text-xl font-bold text-amber-600">{{ total_cash | currency }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-amber-100 shadow-sm px-4 py-3 text-center">
+      <p class="text-xs text-gray-400 mb-0.5">Chuyển khoản</p>
+      <p class="text-xl font-bold text-blue-600">{{ total_transfer | currency }}</p>
+    </div>
+  </div>
+
+  <!-- ── Bảng hóa đơn ── -->
+  <div class="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+    {% if orders %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-amber-50 border-b border-amber-100">
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">STT</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Số HĐ</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Bàn</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Giờ</th>
+            <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Tổng tiền</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">PTTT</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for order in orders %}
+          <tr class="hover:bg-amber-50/50 transition-colors">
+            <td class="px-4 py-3 text-gray-400">{{ loop.index }}</td>
+            <td class="px-4 py-3">
+              <span class="font-mono text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                {{ order.order_code }}
+              </span>
+            </td>
+            <td class="px-4 py-3 font-medium text-gray-800">{{ order.table_name }}</td>
+            <td class="px-4 py-3 text-gray-500">
+              {{ order.updated_at | dt if order.updated_at else '—' }}
+            </td>
+            <td class="px-4 py-3 text-right font-semibold text-gray-800">
+              {{ order.final_amount | currency }}
+              {% if order.discount_amount > 0 %}
+              <div class="text-xs text-green-600 font-normal">-{{ order.discount_amount | currency }}</div>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3">
+              <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                {{ order.payment_methods or '—' }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-center">
+              <a
+                href="/payments/{{ order.id }}/receipt"
+                target="_blank"
+                class="inline-flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800 font-medium transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                </svg>
+                In HĐ
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <!-- Footer tổng -->
+        <tfoot>
+          <tr class="bg-amber-50 border-t-2 border-amber-200 font-semibold">
+            <td colspan="4" class="px-4 py-3 text-gray-700">Tổng cộng ({{ orders | length }} hóa đơn)</td>
+            <td class="px-4 py-3 text-right text-amber-700">{{ total_revenue | currency }}</td>
+            <td class="px-4 py-3 text-xs text-gray-500">
+              TM: {{ total_cash | currency }} / CK: {{ total_transfer | currency }}
+            </td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-16 text-gray-400">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+      </svg>
+      <p class="font-medium">Không có hóa đơn nào</p>
+      <p class="text-sm">trong ngày {{ date_filter }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

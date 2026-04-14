@@ -1,0 +1,17 @@
+node_modules/
+*.db
+*.db-wal
+*.db-shm
+*.db.lock/
+*.tar.gz
+*.tar
+.env
+.env.local
+npm-debug.log*
+127.0.0.1
+test_db.js
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/

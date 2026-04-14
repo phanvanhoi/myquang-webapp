@@ -1,0 +1,12 @@
+node_modules
+*.db
+*.db-wal
+*.db-shm
+*.db.lock
+*.log
+.git
+docs
+test_db.js
+run.py
+requirements.txt
+MyQuang-WebApp-Design.md
