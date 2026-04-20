@@ -87,29 +87,34 @@ function seed() {
     }
 
     // ── Menu Categories ──
-    const catMain    = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Món chính', 1);
-    const catStarter = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Khai vị', 2);
-    const catDrink   = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Đồ uống', 3);
-    const catDessert = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Tráng miệng', 4);
+    const catMiQuang = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Mì Quảng Truyền Thống', 1);
+    const catCuon    = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Món Cuốn', 2);
+    const catBunMam  = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Bún Mắm Nêm', 3);
+    const catDrink   = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Giải Khát', 4);
 
     // ── Menu Items ──
     const menuItems = [
-      [catMain.lastInsertRowid,    'Cơm sườn nướng',    65000, 1],
-      [catMain.lastInsertRowid,    'Cơm gà xào sả ớt', 60000, 2],
-      [catMain.lastInsertRowid,    'Bún bò Huế',        55000, 3],
-      [catMain.lastInsertRowid,    'Phở bò tái nạm',    60000, 4],
-      [catMain.lastInsertRowid,    'Mì xào hải sản',    70000, 5],
-      [catStarter.lastInsertRowid, 'Gỏi cuốn (2 cuốn)', 35000, 1],
-      [catStarter.lastInsertRowid, 'Chả giò (4 cái)',   40000, 2],
-      [catStarter.lastInsertRowid, 'Soup cua',          45000, 3],
-      [catDrink.lastInsertRowid,   'Cà phê đen đá',     25000, 1],
-      [catDrink.lastInsertRowid,   'Cà phê sữa đá',     30000, 2],
-      [catDrink.lastInsertRowid,   'Trà đào cam sả',    45000, 3],
-      [catDrink.lastInsertRowid,   'Nước ngọt lon',     20000, 4],
-      [catDrink.lastInsertRowid,   'Bia Tiger lon',     35000, 5],
-      [catDrink.lastInsertRowid,   'Nước suối',         15000, 6],
-      [catDessert.lastInsertRowid, 'Chè đậu xanh',     25000, 1],
-      [catDessert.lastInsertRowid, 'Kem ba màu',        30000, 2],
+      // Mì Quảng Truyền Thống
+      [catMiQuang.lastInsertRowid, 'Mì Quảng Đặc Biệt',   80000, 1],
+      [catMiQuang.lastInsertRowid, 'Mì Quảng Bò',         65000, 2],
+      [catMiQuang.lastInsertRowid, 'Mì Quảng Ếch',        60000, 3],
+      [catMiQuang.lastInsertRowid, 'Mì Quảng Tôm Thịt',   55000, 4],
+      [catMiQuang.lastInsertRowid, 'Mì Quảng Gà',         50000, 5],
+      [catMiQuang.lastInsertRowid, 'Mì Quảng Cá Lóc',     50000, 6],
+      // Món Cuốn
+      [catCuon.lastInsertRowid,    'Bánh Tráng Cuốn Heo Quay',  75000, 1],
+      [catCuon.lastInsertRowid,    'Bánh Tráng Cuốn Thịt Luộc', 65000, 2],
+      // Bún Mắm Nêm
+      [catBunMam.lastInsertRowid,  'Bún Mắm Nêm Thập Cẩm Đặc Biệt', 70000, 1],
+      [catBunMam.lastInsertRowid,  'Bún Mắm Heo Quay (Đặc biệt)',   60000, 2],
+      [catBunMam.lastInsertRowid,  'Bún Mắm Heo Quay (Thường)',     50000, 3],
+      [catBunMam.lastInsertRowid,  'Bún Mắm Thịt Luộc (Đặc biệt)',  50000, 4],
+      [catBunMam.lastInsertRowid,  'Bún Mắm Thịt Luộc (Thường)',    40000, 5],
+      // Giải Khát
+      [catDrink.lastInsertRowid,   'Trà Chanh / Quất',  15000, 1],
+      [catDrink.lastInsertRowid,   'Pepsi / Coca Cola', 15000, 2],
+      [catDrink.lastInsertRowid,   'Nước Suối',         10000, 3],
+      [catDrink.lastInsertRowid,   'Trà Sâm Dứa',        5000, 4],
     ];
     menuItems.forEach(([cat, name, price, sort]) => {
       q.run(`INSERT INTO menu_items (category_id, name, base_price, sort_order) VALUES (?,?,?,?)`,
