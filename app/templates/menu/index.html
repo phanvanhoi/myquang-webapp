@@ -55,8 +55,8 @@
     </div>
   </div>
 
-  <div class="flex gap-4">
-    <!-- ── Sidebar: Category filter ── -->
+  <div class="flex flex-col md:flex-row gap-4">
+    <!-- ── Sidebar: Category filter (desktop) ── -->
     <aside class="hidden md:flex flex-col gap-1 w-44 shrink-0">
       <button
         @click="activeCat = 0"
@@ -80,7 +80,7 @@
     </aside>
 
     <!-- ── Category tabs (mobile) ── -->
-    <div class="md:hidden flex gap-2 overflow-x-auto pb-1 mb-2 scrollbar-hide w-full shrink-0">
+    <div class="md:hidden flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
       <button
         @click="activeCat = 0"
         :class="activeCat === 0 ? 'bg-brand-500 text-white' : 'bg-white text-gray-600'"
