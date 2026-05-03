@@ -5,8 +5,11 @@
 
 {% block head %}
 <style>
-  /* Override main's overflow-auto and padding so THIS page is no-scroll */
-  main { overflow: hidden !important; padding: 0 !important; }
+  /* Mobile: allow scroll. Desktop (md+): no-scroll viewport fit */
+  main { padding: 0 !important; }
+  @media (min-width: 768px) {
+    main { overflow: hidden !important; }
+  }
 
   .floor-strip {
     background: linear-gradient(135deg, #b45309 0%, #d97706 60%, #f59e0b 100%);
@@ -24,9 +27,15 @@
   .table-card:hover {
     transform: translateY(-2px);
   }
-  /* Thin scrollbar for rooms column if ever needed */
   .rooms-wrap::-webkit-scrollbar { width: 4px; }
   .rooms-wrap::-webkit-scrollbar-thumb { background: #fcd34d; border-radius: 2px; }
+
+  /* Desktop: auto-fit compact cards */
+  @media (min-width: 768px) {
+    .tables-grid {
+      grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)) !important;
+    }
+  }
 </style>
 {% endblock %}
 
@@ -37,8 +46,7 @@
   We use height: calc(100vh - 57px) where 57px ≈ header height.
 #}
 <div
-  class="flex flex-col"
-  style="height: calc(100vh - 57px); overflow: hidden;"
+  class="flex flex-col md:h-[calc(100vh-57px)] md:overflow-hidden"
   x-data="{
     openModal: false,
     modalTableId: null,
@@ -86,10 +94,11 @@
     </button>
   </div>
 
-  {# ─── FLOORS BODY (fills remaining height) ─────────────────────────────────── #}
+  {# ─── FLOORS BODY ────────────────────────────────────────────────── #}
+  {# Mobile: stack vertically, page scrolls. Desktop: side-by-side, fills remaining height. #}
   {% if tablesByFloor and tablesByFloor.length %}
 
-  <div class="flex flex-1 overflow-hidden gap-0">
+  <div class="flex flex-col md:flex-row md:flex-1 md:overflow-hidden gap-0">
 
     {% for fd in tablesByFloor %}
 
@@ -105,12 +114,8 @@
       {% endfor %}
     {% endfor %}
 
-    {#
-      Each floor gets a vertical "column".
-      Tầng 1 (no rooms) → narrower, Tầng 2 (rooms) → wider.
-      We use flex-1 for equal split; adjust with basis if needed.
-    #}
-    <div class="flex flex-col flex-1 overflow-hidden border-r border-amber-100 last:border-r-0">
+    {# Floor block — full width mobile, flex-1 desktop #}
+    <div class="flex flex-col md:flex-1 md:overflow-hidden border-b md:border-b-0 md:border-r border-amber-100 last:border-r-0 last:border-b-0">
 
       {# Floor header strip #}
       <div class="floor-strip flex items-center justify-between px-3 py-2 flex-shrink-0">
@@ -137,15 +142,15 @@
         </div>
       </div>
 
-      {# Sections (rooms) row — horizontal if multiple rooms, vertical if single #}
-      <div class="flex flex-1 overflow-hidden rooms-wrap
-                  {% if fd.sections.length > 1 %}flex-row gap-0{% else %}flex-col{% endif %}">
+      {# Sections (rooms): mobile always stack vertically, desktop horizontal if multiple rooms #}
+      <div class="flex flex-col md:flex-1 md:overflow-hidden rooms-wrap
+                  {% if fd.sections.length > 1 %}md:flex-row{% else %}md:flex-col{% endif %}">
 
         {% for section in fd.sections %}
 
-        {# Each section: flexible width/height #}
-        <div class="flex flex-col flex-1 overflow-hidden
-                    {% if fd.sections.length > 1 %}border-r border-amber-100 last:border-r-0{% endif %}
+        {# Each section #}
+        <div class="flex flex-col md:flex-1 md:overflow-hidden
+                    {% if fd.sections.length > 1 %}border-b md:border-b-0 md:border-r border-amber-100 last:border-r-0 last:border-b-0{% endif %}
                     p-2 gap-2">
 
           {# Room / area label #}
@@ -166,10 +171,9 @@
           </div>
           {% endif %}
 
-          {# Table cards grid — auto-fit, cards are compact #}
-          <div class="flex-1 overflow-hidden">
-            <div class="grid gap-2 h-full content-start"
-                 style="grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));">
+          {# Table cards grid — mobile 2 cols, desktop auto-fit compact #}
+          <div class="md:flex-1 md:overflow-hidden">
+            <div class="tables-grid grid grid-cols-2 sm:grid-cols-3 gap-2 md:h-full content-start">
 
               {% for entry in section.tables %}
               {% set tbl = entry.table %}
@@ -225,7 +229,7 @@
                 <div class="{{ barCls }} h-1 w-full flex-shrink-0"></div>
 
                 {# Card body #}
-                <div class="flex flex-col gap-1 p-2 flex-1">
+                <div class="flex flex-col gap-1 p-2.5 md:p-2 flex-1">
 
                   {# Table name + status dot #}
                   <div class="flex items-center justify-between gap-1">
