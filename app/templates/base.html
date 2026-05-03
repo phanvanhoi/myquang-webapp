@@ -71,6 +71,11 @@
     <a href="/orders" class="sidebar-link {{ 'active' if currentPath| startsWith('/orders') }}">
       <i data-lucide="clipboard-list" class="w-4 h-4"></i> Orders
     </a>
+    {% if session.role == 'admin' or session.role == 'cashier' %}
+    <a href="/payments/history" class="sidebar-link {{ 'active' if currentPath| startsWith('/payments') }}">
+      <i data-lucide="receipt" class="w-4 h-4"></i> Hóa đơn
+    </a>
+    {% endif %}
     <a href="/finance" class="sidebar-link {{ 'active' if currentPath| startsWith('/finance') }}">
       <i data-lucide="wallet" class="w-4 h-4"></i> Thu Chi
     </a>
