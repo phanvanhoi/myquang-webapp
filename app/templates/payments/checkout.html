@@ -7,8 +7,6 @@
 <div
   x-data="{
     subtotal: {{ order.total_amount }},
-    discount: {{ order.discount_amount }},
-    discountReason: '{{ order.discount_reason or '' }}',
     payMode: 'cash',
     cashGiven: 0,
     transferAmount: 0,
@@ -18,7 +16,7 @@
     orderCode:   {{ (order.order_code      or '') | tojson }},
 
     get finalAmount() {
-      return Math.max(0, this.subtotal - this.discount);
+      return this.subtotal;
     },
     get change() {
       if (this.payMode === 'cash') return Math.max(0, this.cashGiven - this.finalAmount);
@@ -82,37 +80,9 @@
         <!-- Footer tính tiền -->
         <div class="border-t border-gray-100 px-5 py-4 bg-gray-50 space-y-3">
 
-          <!-- Subtotal -->
-          <div class="flex justify-between text-sm text-gray-600">
-            <span>Tạm tính</span>
-            <span class="font-medium" x-text="formatVND(subtotal)">{{ order.total_amount | currency }}</span>
-          </div>
-
-          <!-- Giảm giá -->
-          <div class="space-y-1">
-            <label class="text-sm text-gray-600">Giảm giá</label>
-            <div class="flex gap-2">
-              <input
-                type="text"
-                inputmode="numeric"
-                :value="discount ? Number(discount).toLocaleString('vi-VN') : ''"
-                @input="discount = Math.min(subtotal, parseInt($event.target.value.replace(/\D/g, '')) || 0)"
-                class="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                placeholder="0"
-              />
-              <input type="hidden" name="discount_amount" :value="discount" />
-              <input
-                type="text"
-                name="discount_reason"
-                x-model="discountReason"
-                class="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                placeholder="Lý do giảm giá..."
-              />
-            </div>
-          </div>
-
-          <!-- Divider -->
-          <div class="border-t border-dashed border-amber-300 my-1"></div>
+          {# Subtotal hidden — chỉ hiện 1 dòng tổng cuối #}
+          <input type="hidden" name="discount_amount" value="0" />
+          <input type="hidden" name="discount_reason" value="" />
 
           <!-- Tổng cần thanh toán -->
           <div class="flex justify-between items-center">
