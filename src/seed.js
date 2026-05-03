@@ -58,7 +58,7 @@ function seed() {
     );
 
     // ── Tables: Tầng 1 ──
-    for (let i = 1; i <= 6; i++) {
+    for (let i = 1; i <= 5; i++) {
       q.run(
         `INSERT INTO tables (floor_id, room_id, code, name, capacity) VALUES (?,?,?,?,?)`,
         f1.lastInsertRowid, null,
@@ -148,9 +148,9 @@ function seed() {
       ['service_charge_rate','0',                        'Phí phục vụ (%)'],
       ['currency',           'VND',                      'Đơn vị tiền tệ'],
       ['receipt_footer_note','Cảm ơn quý khách đã dùng bữa tại MyQuang!', 'Ghi chú phiếu thu'],
-      ['bank_account',       '',                         'Số tài khoản'],
-      ['bank_name',          '',                         'Tên ngân hàng'],
-      ['bank_owner',         '',                         'Tên chủ tài khoản'],
+      ['bank_account',       '7167676767',               'Số tài khoản'],
+      ['bank_name',          'MB',                       'Tên ngân hàng (mã VietQR)'],
+      ['bank_owner',         'HO KINH DOANH E E.. MI QUANG QUE', 'Tên chủ tài khoản'],
     ];
     defaults.forEach(([key, value, desc]) => {
       q.run(`INSERT INTO settings (key, value, description) VALUES (?,?,?)`, key, value, desc);
