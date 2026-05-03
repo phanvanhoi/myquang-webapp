@@ -12,6 +12,10 @@
     payMode: 'cash',
     cashGiven: 0,
     transferAmount: 0,
+    bankAccount: {{ (settings.bank_account or '') | tojson }},
+    bankName:    {{ (settings.bank_name    or '') | tojson }},
+    bankOwner:   {{ (settings.bank_owner   or '') | tojson }},
+    orderCode:   {{ (order.order_code      or '') | tojson }},
 
     get finalAmount() {
       return Math.max(0, this.subtotal - this.discount);
@@ -24,6 +28,16 @@
     get cashNeeded() {
       if (this.payMode === 'combo') return Math.max(0, this.finalAmount - this.transferAmount);
       return this.finalAmount;
+    },
+    get vietQrUrl() {
+      if (!this.bankAccount || !this.bankName) return '';
+      const bank   = encodeURIComponent(this.bankName);
+      const acc    = encodeURIComponent(this.bankAccount);
+      const owner  = encodeURIComponent(this.bankOwner || '');
+      const amount = Math.round(this.payMode === 'combo' ? this.transferAmount : this.finalAmount);
+      const info   = encodeURIComponent(this.orderCode);
+      return 'https://img.vietqr.io/image/' + bank + '-' + acc + '-compact2.png'
+        + '?amount=' + amount + '&addInfo=' + info + '&accountName=' + owner;
     },
     formatVND(n) {
       return new Intl.NumberFormat('vi-VN').format(Math.round(n)) + 'đ';
@@ -240,15 +254,16 @@
               </div>
             </div>
 
-            {% if settings.qr_image_url %}
-            <div class="flex justify-center">
-              <img src="{{ settings.qr_image_url }}" alt="QR Code" class="w-48 h-48 object-contain rounded-xl border border-gray-200" />
+            <div x-show="vietQrUrl" class="flex flex-col items-center gap-2">
+              <img :src="vietQrUrl" alt="QR Code"
+                   class="w-48 h-48 object-contain rounded-xl border border-gray-200" />
+              <p class="text-xs text-gray-400">Quét QR để chuyển <span class="font-semibold text-blue-700" x-text="formatVND(finalAmount)"></span></p>
             </div>
-            {% else %}
-            <div class="flex justify-center items-center h-40 bg-gray-50 rounded-xl border border-dashed border-gray-300 text-gray-400 text-sm">
-              Chưa cài đặt QR code
+            <div x-show="!vietQrUrl"
+                 class="flex flex-col items-center justify-center h-40 bg-gray-50 rounded-xl border border-dashed border-gray-300 text-gray-400 text-sm gap-1">
+              <span>Chưa cài đặt thông tin ngân hàng</span>
+              <a href="/settings?tab=bank" class="text-amber-600 hover:underline">Cấu hình ngay</a>
             </div>
-            {% endif %}
           </div>
 
           <!-- ── KẾT HỢP ── -->
