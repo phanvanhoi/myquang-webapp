@@ -236,23 +236,19 @@
               <td class="px-4 py-3">
                 <div class="flex items-center justify-center gap-2">
                   <!-- Toggle active -->
-                  <form method="POST" action="/settings/users/{{ u.id }}/toggle"
-                        onsubmit="return confirm('Xác nhận thay đổi trạng thái tài khoản này?')">
-                    <button type="submit"
-                            class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                                   {% if u.is_active %}bg-gray-100 text-gray-600 hover:bg-gray-200
-                                   {% else %}bg-green-100 text-green-700 hover:bg-green-200{% endif %}">
-                      {% if u.is_active %}Khóa{% else %}Kích hoạt{% endif %}
-                    </button>
-                  </form>
+                  <button type="button"
+                    @click="confirmAction = { type: 'toggle', id: {{ u.id }}, name: '{{ u.full_name | replace("'", "\\'") }}', isActive: {{ 'true' if u.is_active else 'false' }} }"
+                    class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                           {% if u.is_active %}bg-gray-100 text-gray-600 hover:bg-gray-200
+                           {% else %}bg-green-100 text-green-700 hover:bg-green-200{% endif %}">
+                    {% if u.is_active %}Khóa{% else %}Kích hoạt{% endif %}
+                  </button>
                   <!-- Reset password -->
-                  <form method="POST" action="/settings/users/{{ u.id }}/reset-password"
-                        onsubmit="return confirm('Reset mật khẩu tài khoản {{ u.full_name }}? Mật khẩu mới sẽ được hiển thị trong thông báo.')">
-                    <button type="submit"
-                            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors">
-                      Reset MK
-                    </button>
-                  </form>
+                  <button type="button"
+                    @click="confirmAction = { type: 'reset', id: {{ u.id }}, name: '{{ u.full_name | replace("'", "\\'") }}' }"
+                    class="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors">
+                    Reset MK
+                  </button>
                 </div>
               </td>
             </tr>
@@ -298,22 +294,18 @@
             </div>
           </div>
           <div class="flex gap-2">
-            <form method="POST" action="/settings/users/{{ u.id }}/toggle"
-                  onsubmit="return confirm('Xác nhận thay đổi trạng thái tài khoản này?')" class="flex-1">
-              <button type="submit"
-                      class="w-full h-10 rounded-lg text-sm font-medium transition-colors
-                             {% if u.is_active %}bg-gray-100 text-gray-600 hover:bg-gray-200
-                             {% else %}bg-green-100 text-green-700 hover:bg-green-200{% endif %}">
-                {% if u.is_active %}Khóa{% else %}Kích hoạt{% endif %}
-              </button>
-            </form>
-            <form method="POST" action="/settings/users/{{ u.id }}/reset-password"
-                  onsubmit="return confirm('Reset mật khẩu tài khoản {{ u.full_name }}?')" class="flex-1">
-              <button type="submit"
-                      class="w-full h-10 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 text-sm font-medium transition-colors">
-                Reset MK
-              </button>
-            </form>
+            <button type="button"
+              @click="confirmAction = { type: 'toggle', id: {{ u.id }}, name: '{{ u.full_name | replace("'", "\\'") }}', isActive: {{ 'true' if u.is_active else 'false' }} }"
+              class="flex-1 h-10 rounded-lg text-sm font-medium transition-colors
+                     {% if u.is_active %}bg-gray-100 text-gray-600 hover:bg-gray-200
+                     {% else %}bg-green-100 text-green-700 hover:bg-green-200{% endif %}">
+              {% if u.is_active %}Khóa{% else %}Kích hoạt{% endif %}
+            </button>
+            <button type="button"
+              @click="confirmAction = { type: 'reset', id: {{ u.id }}, name: '{{ u.full_name | replace("'", "\\'") }}' }"
+              class="flex-1 h-10 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 text-sm font-medium transition-colors">
+              Reset MK
+            </button>
           </div>
         </div>
         {% else %}
@@ -386,6 +378,40 @@
   </div>
   {% endif %}
 
+  <!-- Confirm action modal (toggle/reset) -->
+  <div x-show="confirmAction" x-cloak x-transition
+       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+       @click.self="confirmAction = null">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" @click.stop>
+      <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+           :class="confirmAction?.type === 'toggle' ? 'bg-amber-100' : 'bg-amber-100'">
+        <i :data-lucide="confirmAction?.type === 'toggle' ? 'lock' : 'key'"
+           class="w-6 h-6 text-amber-600"></i>
+      </div>
+      <h3 class="font-semibold text-gray-800 text-center mb-1"
+          x-text="confirmAction?.type === 'toggle'
+            ? (confirmAction?.isActive ? 'Khóa tài khoản?' : 'Kích hoạt tài khoản?')
+            : 'Reset mật khẩu?'"></h3>
+      <p class="text-sm text-gray-500 text-center mb-5"
+         x-text="confirmAction?.type === 'reset'
+           ? 'Mật khẩu mới của ' + (confirmAction?.name || '') + ' sẽ hiển thị sau khi xác nhận.'
+           : 'Tài khoản ' + (confirmAction?.name || '')"></p>
+      <div class="flex gap-2">
+        <button @click="confirmAction = null"
+                class="flex-1 h-10 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50 transition">
+          Thôi
+        </button>
+        <form :action="'/settings/users/' + confirmAction?.id + '/' + (confirmAction?.type === 'toggle' ? 'toggle' : 'reset-password')"
+              method="POST" class="flex-1">
+          <button type="submit"
+                  class="w-full h-10 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold transition">
+            Xác nhận
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
 </div>
 {% endblock %}
 
@@ -400,6 +426,7 @@ function settingsApp() {
     activeTab: initialTab,
     showCreateModal: false,
     showPw: false,
+    confirmAction: null,
 
     bankAccount: '{{ settings.bank_account | default("") }}',
     bankName: '{{ settings.bank_name | default("") }}',

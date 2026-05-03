@@ -119,6 +119,7 @@
             <button
               type="button"
               @click="showPass = !showPass"
+              :aria-label="showPass ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
               class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition"
               tabindex="-1"
             >

@@ -33,6 +33,7 @@
         <label class="block text-sm font-medium text-gray-700 mb-1.5">Số tiền (đ) <span class="text-red-500">*</span></label>
         <input
           type="number"
+          inputmode="decimal"
           name="amount"
           value="{{ expense.amount | int }}"
           min="1"

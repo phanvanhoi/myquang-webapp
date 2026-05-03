@@ -281,13 +281,20 @@
 
       {# Gửi bếp #}
       <button @click="sendToKitchen()"
-              :disabled="cart.length === 0"
-              :class="cart.length > 0
+              :disabled="cart.length === 0 || sending"
+              :class="cart.length > 0 && !sending
                 ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm'
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'"
               class="w-full h-11 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
-        <i data-lucide="send" class="w-4 h-4"></i>
-        <span x-text="cart.length > 0 ? 'Gửi bếp (' + cart.length + ' loại)' : 'Chưa có món mới'"></span>
+        <template x-if="sending">
+          <span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+        </template>
+        <template x-if="!sending">
+          <i data-lucide="send" class="w-4 h-4"></i>
+        </template>
+        <span x-text="sending
+          ? 'Đang gửi...'
+          : (cart.length > 0 ? 'Gửi bếp (' + cart.length + ' loại)' : 'Chưa có món mới')"></span>
       </button>
 
       {# Thanh toán #}
@@ -355,6 +362,7 @@ function posOrder(menuItems, orderId) {
     search: '',
     activeCat: 0,
     activeView: 'menu', // mobile: 'menu' | 'cart'
+    sending: false,
 
     get filteredItems() {
       return this.menuItems.filter(item => {
@@ -407,7 +415,9 @@ function posOrder(menuItems, orderId) {
     },
 
     async sendToKitchen() {
-      if (this.cart.length === 0) return;
+      if (this.cart.length === 0 || this.sending) return;
+      this.sending = true;
+      const count = this.cart.length;
       const payload = this.cart.map(e => ({
         item_id: e.item_id, quantity: e.qty, note: e.note || '',
       }));
@@ -419,18 +429,33 @@ function posOrder(menuItems, orderId) {
         });
         const data = await resp.json();
         if (data.success) {
-          window.location.reload();
+          sessionStorage.setItem('flash_kitchen', `Đã gửi ${count} loại món vào bếp.`);
+          window.location.href = data.redirect || window.location.pathname;
         } else {
+          this.sending = false;
           alert(data.error || 'Có lỗi xảy ra.');
         }
       } catch (e) {
+        this.sending = false;
         alert('Lỗi kết nối. Vui lòng thử lại.');
       }
     },
   };
 }
 
-document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
-document.addEventListener('alpine:mutated',   () => lucide.createIcons());
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+  // Show flash toast from sessionStorage (set after sendToKitchen redirect)
+  const flashMsg = sessionStorage.getItem('flash_kitchen');
+  if (flashMsg) {
+    sessionStorage.removeItem('flash_kitchen');
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-16 md:top-4 right-4 left-4 md:left-auto z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-green-500 text-white toast';
+    toast.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' + flashMsg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
+  }
+});
+document.addEventListener('alpine:mutated', () => lucide.createIcons());
 </script>
 {% endblock %}
