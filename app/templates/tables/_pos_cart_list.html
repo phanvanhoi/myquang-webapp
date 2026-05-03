@@ -5,9 +5,10 @@
 #}
 
 {# Server items đã gửi bếp #}
+{% set canEdit = session.role == 'admin' or session.role == 'cashier' %}
 {% for item in items %}
 {% if item.status != 'cancelled' %}
-<div class="flex items-center gap-3 px-4 py-2.5">
+<div class="flex items-center gap-2 px-4 py-2.5" data-server-item="{{ item.id }}">
   <div class="flex-1 min-w-0">
     <div class="text-sm font-medium text-gray-700 truncate">
       {{ item.menu_item.name if item.menu_item else item.item_name }}
@@ -16,7 +17,28 @@
     <div class="text-xs text-amber-600 italic truncate">{{ item.note }}</div>
     {% endif %}
   </div>
+
+  {% if canEdit and item.status == 'pending' %}
+  {# Qty +/- buttons cho món pending #}
+  <div class="flex items-center gap-1 shrink-0">
+    <button type="button"
+            onclick="serverItemQty({{ order.id }}, {{ item.id }}, {{ item.quantity - 1 }})"
+            aria-label="Giảm số lượng"
+            class="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-red-50 hover:border-red-300 hover:text-red-500 active:bg-red-50 transition-colors">
+      <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+    </button>
+    <span class="w-7 text-center text-sm font-bold text-gray-800">{{ item.quantity }}</span>
+    <button type="button"
+            onclick="serverItemQty({{ order.id }}, {{ item.id }}, {{ item.quantity + 1 }})"
+            aria-label="Tăng số lượng"
+            class="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-green-50 hover:border-green-300 hover:text-green-600 active:bg-green-50 transition-colors">
+      <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+    </button>
+  </div>
+  {% else %}
   <div class="text-xs text-gray-400 shrink-0">×{{ item.quantity }}</div>
+  {% endif %}
+
   <div class="text-sm font-semibold text-gray-700 shrink-0 w-20 text-right">
     {{ item.subtotal | currency }}
   </div>
@@ -30,6 +52,16 @@
     {% elif item.status == 'served' %}Đã lên
     {% else %}Huỷ{% endif %}
   </span>
+
+  {% if canEdit and item.status in ('pending', 'preparing') %}
+  {# Cancel button #}
+  <button type="button"
+          onclick="serverItemCancel({{ order.id }}, {{ item.id }}, '{{ (item.menu_item.name if item.menu_item else item.item_name) | replace("'", "\\'") }}')"
+          aria-label="Hủy món"
+          class="shrink-0 w-7 h-7 flex items-center justify-center text-gray-300 hover:text-red-500 active:text-red-500 transition-colors">
+    <i data-lucide="x" class="w-4 h-4"></i>
+  </button>
+  {% endif %}
 </div>
 {% endif %}
 {% endfor %}

@@ -479,6 +479,50 @@ function posOrder(menuItems, orderId, serverItemCount, existingTotal) {
   };
 }
 
+// Sửa số lượng món đã ở status='pending'
+async function serverItemQty(orderId, itemId, newQty) {
+  if (newQty < 1) {
+    if (!confirm('Số lượng = 0 sẽ hủy món. Tiếp tục?')) return;
+    return serverItemCancel(orderId, itemId, '');
+  }
+  try {
+    const resp = await fetch(`/orders/${orderId}/items/${itemId}/qty`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quantity: newQty }),
+    });
+    const data = await resp.json();
+    if (data.success) {
+      sessionStorage.setItem('flash_kitchen', `Đã cập nhật số lượng.`);
+      window.location.reload();
+    } else {
+      alert(data.error || 'Có lỗi xảy ra.');
+    }
+  } catch (e) {
+    alert('Lỗi kết nối. Vui lòng thử lại.');
+  }
+}
+
+// Hủy một món đã gửi
+async function serverItemCancel(orderId, itemId, name) {
+  if (name && !confirm(`Hủy món "${name}"?`)) return;
+  try {
+    const resp = await fetch(`/orders/${orderId}/items/${itemId}/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await resp.json();
+    if (data.success) {
+      sessionStorage.setItem('flash_kitchen', `Đã hủy món.`);
+      window.location.reload();
+    } else {
+      alert(data.error || 'Có lỗi xảy ra.');
+    }
+  } catch (e) {
+    alert('Lỗi kết nối. Vui lòng thử lại.');
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
   const flashMsg = sessionStorage.getItem('flash_kitchen');

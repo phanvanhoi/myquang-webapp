@@ -146,9 +146,40 @@ router.post('/:id/items/:itemId/cancel', requireAdminOrCashier, (req, res) => {
     id
   );
   q.recalcOrder(parseInt(id));
+  if (req.is('application/json')) {
+    return res.json({ success: true });
+  }
   res.flash('success', 'Đã huỷ món');
   const back = req.headers.referer || '/orders/' + id;
   res.redirect(back);
+});
+
+// POST /:id/items/:itemId/qty — Sửa số lượng (chỉ status='pending')
+router.post('/:id/items/:itemId/qty', requireAdminOrCashier, (req, res) => {
+  const { id, itemId } = req.params;
+  const quantity = parseInt(req.body.quantity);
+  if (!quantity || quantity < 1) {
+    return res.status(400).json({ success: false, error: 'Số lượng không hợp lệ' });
+  }
+  const item = q.get(
+    `SELECT * FROM order_items WHERE id = ? AND order_id = ?`,
+    itemId, id
+  );
+  if (!item) {
+    return res.status(404).json({ success: false, error: 'Không tìm thấy món' });
+  }
+  if (item.status !== 'pending') {
+    return res.status(400).json({ success: false, error: 'Chỉ sửa được món chưa gửi bếp' });
+  }
+  const subtotal = quantity * item.unit_price;
+  q.run(
+    `UPDATE order_items
+     SET quantity = ?, subtotal = ?, updated_at = datetime('now','localtime')
+     WHERE id = ? AND order_id = ?`,
+    quantity, subtotal, itemId, id
+  );
+  q.recalcOrder(parseInt(id));
+  return res.json({ success: true, quantity, subtotal });
 });
 
 // POST /:id/send-to-kitchen — Gửi bếp (pending → preparing)
