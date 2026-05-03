@@ -87,10 +87,12 @@ function seed() {
     }
 
     // ── Menu Categories ──
-    const catMiQuang = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Mì Quảng Truyền Thống', 1);
-    const catCuon    = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Món Cuốn', 2);
-    const catBunMam  = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Bún Mắm Nêm', 3);
-    const catDrink   = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Giải Khát', 4);
+    const catMiQuang  = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Mì Quảng Truyền Thống', 1);
+    const catBunMam   = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Bún Mắm Nêm', 2);
+    const catCuon     = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Món Cuốn', 3);
+    const catAnKem    = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Món Ăn Kèm', 4);
+    const catComGa    = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Cơm Gà Hội An', 5);
+    const catDrink    = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Giải Khát', 6);
 
     // ── Menu Items ──
     const menuItems = [
@@ -98,23 +100,29 @@ function seed() {
       [catMiQuang.lastInsertRowid, 'Mì Quảng Đặc Biệt',   80000, 1],
       [catMiQuang.lastInsertRowid, 'Mì Quảng Bò',         65000, 2],
       [catMiQuang.lastInsertRowid, 'Mì Quảng Ếch',        60000, 3],
-      [catMiQuang.lastInsertRowid, 'Mì Quảng Tôm Thịt',   55000, 4],
-      [catMiQuang.lastInsertRowid, 'Mì Quảng Gà',         50000, 5],
-      [catMiQuang.lastInsertRowid, 'Mì Quảng Cá Lóc',     50000, 6],
-      // Món Cuốn
-      [catCuon.lastInsertRowid,    'Bánh Tráng Cuốn Heo Quay',  75000, 1],
-      [catCuon.lastInsertRowid,    'Bánh Tráng Cuốn Thịt Luộc', 65000, 2],
+      [catMiQuang.lastInsertRowid, 'Mì Quảng Gà',         55000, 4],
+      [catMiQuang.lastInsertRowid, 'Mì Quảng Tôm Thịt',   55000, 5],
+      [catMiQuang.lastInsertRowid, 'Mì Quảng Cá Lóc',     55000, 6],
       // Bún Mắm Nêm
-      [catBunMam.lastInsertRowid,  'Bún Mắm Nêm Thập Cẩm Đặc Biệt', 70000, 1],
-      [catBunMam.lastInsertRowid,  'Bún Mắm Heo Quay (Đặc biệt)',   60000, 2],
-      [catBunMam.lastInsertRowid,  'Bún Mắm Heo Quay (Thường)',     50000, 3],
-      [catBunMam.lastInsertRowid,  'Bún Mắm Thịt Luộc (Đặc biệt)',  50000, 4],
-      [catBunMam.lastInsertRowid,  'Bún Mắm Thịt Luộc (Thường)',    40000, 5],
+      [catBunMam.lastInsertRowid,  'Bún Mắm Nêm Thập Cẩm Đặc Biệt', 75000, 1],
+      [catBunMam.lastInsertRowid,  'Bún Mắm Heo Quay (Thường)',     55000, 2],
+      [catBunMam.lastInsertRowid,  'Bún Mắm Heo Quay (Đặc Biệt)',   65000, 3],
+      [catBunMam.lastInsertRowid,  'Bún Mắm Thịt Luộc (Thường)',    45000, 4],
+      [catBunMam.lastInsertRowid,  'Bún Mắm Thịt Luộc (Đặc Biệt)',  55000, 5],
+      // Món Cuốn
+      [catCuon.lastInsertRowid,    'Bánh Tráng Cuốn Heo Quay',  80000, 1],
+      [catCuon.lastInsertRowid,    'Bánh Tráng Cuốn Thịt Luộc', 70000, 2],
+      // Món Ăn Kèm
+      [catAnKem.lastInsertRowid,   'Bánh Bột Lọc (Đĩa 6 cái)',  30000, 1],
+      [catAnKem.lastInsertRowid,   'Chả Ram Tôm Bình Định',     35000, 2],
+      // Cơm Gà Hội An
+      [catComGa.lastInsertRowid,   'Cơm Gà Hội An (Phần Nhỏ)',      55000, 1],
+      [catComGa.lastInsertRowid,   'Cơm Gà Hội An (Phần Đầy Đặn)',  65000, 2],
       // Giải Khát
-      [catDrink.lastInsertRowid,   'Trà Chanh / Quất',  15000, 1],
-      [catDrink.lastInsertRowid,   'Pepsi / Coca Cola', 15000, 2],
-      [catDrink.lastInsertRowid,   'Nước Suối',         10000, 3],
-      [catDrink.lastInsertRowid,   'Trà Sâm Dứa',        5000, 4],
+      [catDrink.lastInsertRowid,   'Pepsi / Coca Cola', 15000, 1],
+      [catDrink.lastInsertRowid,   'Trà Chanh / Quất',  15000, 2],
+      [catDrink.lastInsertRowid,   'Trà Sâm Dứa',        5000, 3],
+      [catDrink.lastInsertRowid,   'Nước Suối',         10000, 4],
     ];
     menuItems.forEach(([cat, name, price, sort]) => {
       q.run(`INSERT INTO menu_items (category_id, name, base_price, sort_order) VALUES (?,?,?,?)`,

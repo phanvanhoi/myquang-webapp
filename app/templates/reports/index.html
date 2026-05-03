@@ -30,35 +30,34 @@
   <div x-show="activeTab === 'revenue'" x-cloak class="space-y-4">
 
     <!-- Filter bar -->
-    <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-4">
-      <div class="flex flex-wrap items-center gap-3">
-        <!-- Period buttons -->
-        <div class="flex rounded-lg border border-amber-200 overflow-hidden">
-          <button @click="revPeriod = 'day'; loadRevenue()"
-                  :class="revPeriod === 'day' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
-                  class="px-4 py-2 text-sm font-medium transition-colors border-r border-amber-200">
-            Ngày
-          </button>
-          <button @click="revPeriod = 'week'; loadRevenue()"
-                  :class="revPeriod === 'week' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
-                  class="px-4 py-2 text-sm font-medium transition-colors border-r border-amber-200">
-            Tuần
-          </button>
-          <button @click="revPeriod = 'month'; loadRevenue()"
-                  :class="revPeriod === 'month' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
-                  class="px-4 py-2 text-sm font-medium transition-colors">
-            Tháng
-          </button>
-        </div>
+    <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-4 space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+      <!-- Period buttons (full row on mobile) -->
+      <div class="flex w-full sm:w-auto rounded-lg border border-amber-200 overflow-hidden">
+        <button @click="revPeriod = 'day'; loadRevenue()"
+                :class="revPeriod === 'day' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
+                class="flex-1 sm:flex-none px-4 h-10 text-sm font-medium transition-colors border-r border-amber-200">
+          Ngày
+        </button>
+        <button @click="revPeriod = 'week'; loadRevenue()"
+                :class="revPeriod === 'week' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
+                class="flex-1 sm:flex-none px-4 h-10 text-sm font-medium transition-colors border-r border-amber-200">
+          Tuần
+        </button>
+        <button @click="revPeriod = 'month'; loadRevenue()"
+                :class="revPeriod === 'month' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
+                class="flex-1 sm:flex-none px-4 h-10 text-sm font-medium transition-colors">
+          Tháng
+        </button>
+      </div>
 
-        <!-- Date picker -->
+      <!-- Date + button (row on mobile) -->
+      <div class="flex gap-2 sm:contents">
         <input type="date" x-model="revDate" @change="loadRevenue()"
-               class="border border-amber-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
-
+               class="flex-1 sm:flex-none border border-amber-200 rounded-lg px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
         <button @click="loadRevenue()"
-                class="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors">
+                class="shrink-0 flex items-center gap-2 px-4 h-10 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors">
           <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-          Cập nhật
+          <span class="hidden sm:inline">Cập nhật</span>
         </button>
       </div>
     </div>

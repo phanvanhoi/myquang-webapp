@@ -50,8 +50,8 @@
 
 {% if session.userId %}
 <!-- SIDEBAR -->
-<aside class="fixed inset-y-0 left-0 z-40 w-56 bg-amber-800 flex flex-col shadow-xl transition-transform duration-300 lg:translate-x-0 lg:static lg:inset-auto"
-       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
+<aside class="fixed inset-y-0 left-0 z-40 w-56 bg-amber-800 flex flex-col shadow-xl transition-transform duration-300 md:translate-x-0 md:static md:inset-auto"
+       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'">
 
   <div class="px-4 py-5 border-b border-amber-700">
     <div class="text-white font-bold text-lg">🍜 MyQuang</div>
@@ -95,7 +95,7 @@
 </aside>
 
 <div x-show="sidebarOpen" x-cloak @click="sidebarOpen=false"
-     class="fixed inset-0 z-30 bg-black/40 lg:hidden"></div>
+     class="fixed inset-0 z-30 bg-black/40 md:hidden"></div>
 {% endif %}
 
 <!-- MAIN -->
@@ -103,7 +103,9 @@
 
   {% if session.userId %}
   <header class="bg-white border-b border-amber-100 px-4 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-sm no-print">
-    <button @click="sidebarOpen=!sidebarOpen" class="lg:hidden p-1 rounded text-amber-700 hover:bg-amber-50">
+    <button @click="sidebarOpen=!sidebarOpen"
+            aria-label="Mở menu"
+            class="md:hidden p-2.5 -ml-1 rounded-lg text-amber-700 hover:bg-amber-50 transition-colors">
       <i data-lucide="menu" class="w-5 h-5"></i>
     </button>
     <h1 class="text-base font-semibold text-amber-900">{% block page_title %}{% endblock %}</h1>
@@ -113,7 +115,7 @@
 
   <!-- Flash messages -->
   {% if flash and flash.length %}
-  <div class="fixed top-4 right-4 z-50 space-y-2 no-print">
+  <div class="fixed top-16 md:top-4 right-4 left-4 md:left-auto z-50 space-y-2 no-print">
     {% for msg in flash %}
     <div class="toast flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium
       {% if msg.type == 'success' %}bg-green-500 text-white

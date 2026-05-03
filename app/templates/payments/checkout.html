@@ -177,12 +177,27 @@
               <label class="block text-sm font-medium text-gray-700 mb-1.5">Tiền khách đưa</label>
               <input
                 type="number"
+                inputmode="decimal"
                 x-model.number="cashGiven"
                 min="0"
                 step="1000"
                 class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-lg font-semibold focus:outline-none focus:border-amber-400 transition-colors"
                 placeholder="Nhập số tiền..."
               />
+              <!-- Quick amount buttons -->
+              <div class="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-2">
+                <template x-for="amt in [50000, 100000, 200000, 500000, 1000000]" :key="amt">
+                  <button type="button"
+                          @click="cashGiven = (cashGiven || 0) + amt"
+                          class="h-10 rounded-lg border border-amber-200 text-amber-700 text-xs font-semibold hover:bg-amber-50 active:bg-amber-100 transition-colors"
+                          x-text="formatVND(amt)"></button>
+                </template>
+                <button type="button"
+                        @click="cashGiven = finalAmount"
+                        class="h-10 col-span-3 sm:col-span-5 rounded-lg bg-amber-100 text-amber-800 text-xs font-semibold hover:bg-amber-200 transition-colors">
+                  Đủ tiền (<span x-text="formatVND(finalAmount)"></span>)
+                </button>
+              </div>
             </div>
 
             <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex justify-between items-center">
@@ -245,6 +260,7 @@
               <label class="block text-sm font-medium text-gray-700 mb-1.5">Số tiền chuyển khoản</label>
               <input
                 type="number"
+                inputmode="decimal"
                 x-model.number="transferAmount"
                 @input="if(transferAmount > finalAmount) transferAmount = finalAmount"
                 min="0"
@@ -263,12 +279,27 @@
               <label class="block text-sm font-medium text-gray-700 mb-1.5">Tiền mặt khách đưa</label>
               <input
                 type="number"
+                inputmode="decimal"
                 x-model.number="cashGiven"
                 min="0"
                 step="1000"
                 class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-lg font-semibold focus:outline-none focus:border-amber-400 transition-colors"
                 placeholder="0"
               />
+              <!-- Quick amount buttons -->
+              <div class="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-2">
+                <template x-for="amt in [50000, 100000, 200000, 500000, 1000000]" :key="amt">
+                  <button type="button"
+                          @click="cashGiven = (cashGiven || 0) + amt"
+                          class="h-10 rounded-lg border border-amber-200 text-amber-700 text-xs font-semibold hover:bg-amber-50 transition-colors"
+                          x-text="formatVND(amt)"></button>
+                </template>
+                <button type="button"
+                        @click="cashGiven = cashNeeded"
+                        class="h-10 col-span-3 sm:col-span-5 rounded-lg bg-amber-100 text-amber-800 text-xs font-semibold hover:bg-amber-200 transition-colors">
+                  Đủ tiền (<span x-text="formatVND(cashNeeded)"></span>)
+                </button>
+              </div>
             </div>
 
             <div class="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex justify-between items-center">
