@@ -3,11 +3,11 @@
 {% block page_title %}Order {{ order.order_code }} — {{ order.table_name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-4">
+<div class="max-w-3xl mx-auto space-y-4 pb-20 md:pb-0">
 
   <!-- ── Order info bar ── -->
-  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-4 items-center justify-between">
-    <div class="flex flex-wrap gap-4">
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+    <div class="grid grid-cols-2 md:flex md:flex-wrap gap-4 md:gap-6">
       <div>
         <p class="text-xs text-gray-400">Bàn</p>
         <p class="font-bold text-gray-800">{{ order.table_name }}</p>
@@ -34,15 +34,14 @@
       </div>
     </div>
 
-    <!-- Actions -->
+    <!-- Desktop actions -->
     {% if order.status in ('open', 'serving') %}
-    <div class="flex gap-2 flex-wrap">
+    <div class="hidden md:flex gap-2 flex-wrap mt-4 pt-4 border-t border-gray-100">
       <a href="/orders/{{ order.id }}/add-items"
          class="h-10 px-4 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-semibold flex items-center gap-2 transition-colors">
         <i data-lucide="plus" class="w-4 h-4"></i> Gọi thêm
       </a>
 
-      <!-- Send to kitchen -->
       {% if pending_count %}
       <form action="/orders/{{ order.id }}/send-to-kitchen" method="post">
         <button type="submit"
@@ -57,7 +56,6 @@
         <i data-lucide="credit-card" class="w-4 h-4"></i> Thanh toán
       </a>
 
-      <!-- Cancel order -->
       <form action="/orders/{{ order.id }}/cancel" method="post"
             @submit.prevent.once="confirm('Hủy toàn bộ order này?') && $el.submit()" x-data>
         <button type="submit"
@@ -167,4 +165,34 @@
   </a>
 
 </div>
+
+<!-- ── Mobile sticky action bar ── -->
+{% if order.status in ('open', 'serving') %}
+<div class="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-lg p-2 flex gap-2">
+  <a href="/orders/{{ order.id }}/add-items"
+     class="flex-1 h-12 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-bold flex flex-col items-center justify-center transition-colors">
+    <i data-lucide="plus" class="w-4 h-4 mb-0.5"></i> Gọi thêm
+  </a>
+  {% if pending_count %}
+  <form action="/orders/{{ order.id }}/send-to-kitchen" method="post" class="flex-1">
+    <button type="submit"
+      class="w-full h-12 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold flex flex-col items-center justify-center transition-colors">
+      <i data-lucide="flame" class="w-4 h-4 mb-0.5"></i> Gửi bếp ({{ pending_count }})
+    </button>
+  </form>
+  {% endif %}
+  <a href="/payments/{{ order.id }}"
+     class="flex-1 h-12 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold flex flex-col items-center justify-center transition-colors">
+    <i data-lucide="credit-card" class="w-4 h-4 mb-0.5"></i> Thanh toán
+  </a>
+  <form action="/orders/{{ order.id }}/cancel" method="post"
+        @submit.prevent.once="confirm('Hủy toàn bộ order này?') && $el.submit()" x-data
+        class="shrink-0">
+    <button type="submit"
+      class="w-12 h-12 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors">
+      <i data-lucide="x-circle" class="w-5 h-5"></i>
+    </button>
+  </form>
+</div>
+{% endif %}
 {% endblock %}

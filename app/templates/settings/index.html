@@ -186,7 +186,8 @@
         </button>
       </div>
 
-      <div class="overflow-x-auto">
+      <!-- Desktop table -->
+      <div class="hidden md:block overflow-x-auto">
         <table class="w-full text-sm">
           <thead class="bg-amber-50 text-xs text-gray-500 uppercase">
             <tr>
@@ -262,6 +263,62 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
+
+      <!-- Mobile card view -->
+      <div class="md:hidden divide-y divide-gray-50">
+        {% for u in users %}
+        <div class="p-4">
+          <div class="flex items-start gap-3 mb-3">
+            <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-bold text-sm flex-shrink-0">
+              {{ u.full_name[0] | upper }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-semibold text-gray-800">{{ u.full_name }}</div>
+              <div class="font-mono text-xs text-gray-500 mt-0.5">{{ u.username }}</div>
+              <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                             {% if u.role_name == 'admin' %}bg-amber-100 text-amber-700
+                             {% elif u.role_name == 'manager' %}bg-blue-100 text-blue-700
+                             {% else %}bg-gray-100 text-gray-600{% endif %}">
+                  {{ u.role_name }}
+                </span>
+                {% if u.is_active %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                  Hoạt động
+                </span>
+                {% else %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-xs font-medium">
+                  <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                  Tạm khóa
+                </span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <form method="POST" action="/settings/users/{{ u.id }}/toggle"
+                  onsubmit="return confirm('Xác nhận thay đổi trạng thái tài khoản này?')" class="flex-1">
+              <button type="submit"
+                      class="w-full h-10 rounded-lg text-sm font-medium transition-colors
+                             {% if u.is_active %}bg-gray-100 text-gray-600 hover:bg-gray-200
+                             {% else %}bg-green-100 text-green-700 hover:bg-green-200{% endif %}">
+                {% if u.is_active %}Khóa{% else %}Kích hoạt{% endif %}
+              </button>
+            </form>
+            <form method="POST" action="/settings/users/{{ u.id }}/reset-password"
+                  onsubmit="return confirm('Reset mật khẩu tài khoản {{ u.full_name }}?')" class="flex-1">
+              <button type="submit"
+                      class="w-full h-10 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 text-sm font-medium transition-colors">
+                Reset MK
+              </button>
+            </form>
+          </div>
+        </div>
+        {% else %}
+        <div class="p-8 text-center text-gray-400 text-sm">Chưa có tài khoản nào</div>
+        {% endfor %}
       </div>
     </div>
 

@@ -6,7 +6,11 @@
 <style>
   /* POS layout: full height minus header */
   .pos-layout { height: calc(100vh - 57px); }
-  @media (max-width: 1023px) { .pos-layout { height: auto; } }
+  /* Mobile: full viewport, panels switched via tabs */
+  @media (max-width: 1023px) {
+    main { padding: 0 !important; }
+    .pos-layout { height: calc(100vh - 57px); margin: 0 !important; }
+  }
 
   /* Ẩn scrollbar nhưng vẫn scroll được */
   .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -55,8 +59,28 @@
 <div x-data="posOrder(_posMenuItems, _posOrderId)"
      class="pos-layout -m-4 flex flex-col lg:flex-row overflow-hidden">
 
+  {# ══ Mobile tab switcher (chỉ hiện <lg) ══ #}
+  <div class="lg:hidden flex bg-white border-b border-gray-100 shrink-0">
+    <button @click="activeView = 'menu'"
+            :class="activeView === 'menu' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500'"
+            class="flex-1 h-12 flex items-center justify-center gap-2 text-sm font-semibold border-b-2 transition-colors">
+      <i data-lucide="utensils" class="w-4 h-4"></i>
+      Thực đơn
+    </button>
+    <button @click="activeView = 'cart'"
+            :class="activeView === 'cart' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500'"
+            class="relative flex-1 h-12 flex items-center justify-center gap-2 text-sm font-semibold border-b-2 transition-colors">
+      <i data-lucide="shopping-cart" class="w-4 h-4"></i>
+      <span>Giỏ order</span>
+      <span x-show="cart.length + {{ items | length }} > 0"
+            class="absolute top-2 right-1/4 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center"
+            x-text="cart.length + {{ items | length }}"></span>
+    </button>
+  </div>
+
   {# ══ LEFT: Menu browser ══ #}
-  <div class="flex-1 flex flex-col min-h-0 border-r border-gray-100">
+  <div :class="{'hidden lg:flex': activeView !== 'menu'}"
+       class="flex-1 flex flex-col min-h-0 border-r border-gray-100">
 
     {# Top bar: breadcrumb + search #}
     <div class="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 shrink-0">
@@ -139,7 +163,8 @@
   </div>
 
   {# ══ RIGHT: Order panel ══ #}
-  <div class="lg:w-[360px] xl:w-[400px] shrink-0 flex flex-col bg-white">
+  <div :class="{'hidden lg:flex': activeView !== 'cart'}"
+       class="flex-1 lg:flex-none lg:w-[360px] xl:w-[400px] shrink-0 flex flex-col bg-white min-h-0">
 
     {# Order header #}
     <div class="px-4 py-3 border-b border-gray-100 shrink-0">
@@ -207,13 +232,13 @@
           {# Qty controls #}
           <div class="flex items-center gap-1 shrink-0">
             <button @click="updateQty(idx, -1)"
-                    class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-red-50 hover:border-red-300 hover:text-red-500 transition-colors">
-              <i data-lucide="minus" class="w-3 h-3"></i>
+                    class="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-red-50 hover:border-red-300 hover:text-red-500 transition-colors">
+              <i data-lucide="minus" class="w-4 h-4"></i>
             </button>
-            <span class="w-6 text-center text-sm font-bold text-gray-800" x-text="entry.qty"></span>
+            <span class="w-7 text-center text-sm font-bold text-gray-800" x-text="entry.qty"></span>
             <button @click="updateQty(idx, 1)"
-                    class="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-green-50 hover:border-green-300 hover:text-green-600 transition-colors">
-              <i data-lucide="plus" class="w-3 h-3"></i>
+                    class="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-green-50 hover:border-green-300 hover:text-green-600 transition-colors">
+              <i data-lucide="plus" class="w-4 h-4"></i>
             </button>
           </div>
 
@@ -329,6 +354,7 @@ function posOrder(menuItems, orderId) {
     cart: [],
     search: '',
     activeCat: 0,
+    activeView: 'menu', // mobile: 'menu' | 'cart'
 
     get filteredItems() {
       return this.menuItems.filter(item => {
