@@ -1,0 +1,78 @@
+{# Cart list inner content — server items + Alpine cart items + empty state.
+   Used by both desktop and mobile POS panels.
+   Server context required: items (already-sent order items list)
+   Alpine context required: cart, updateQty, removeItem, fmt, serverItemCount
+#}
+
+{# Server items đã gửi bếp #}
+{% for item in items %}
+{% if item.status != 'cancelled' %}
+<div class="flex items-center gap-3 px-4 py-2.5">
+  <div class="flex-1 min-w-0">
+    <div class="text-sm font-medium text-gray-700 truncate">
+      {{ item.menu_item.name if item.menu_item else item.item_name }}
+    </div>
+    {% if item.note %}
+    <div class="text-xs text-amber-600 italic truncate">{{ item.note }}</div>
+    {% endif %}
+  </div>
+  <div class="text-xs text-gray-400 shrink-0">×{{ item.quantity }}</div>
+  <div class="text-sm font-semibold text-gray-700 shrink-0 w-20 text-right">
+    {{ item.subtotal | currency }}
+  </div>
+  <span class="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full
+    {% if item.status == 'pending' %}pill-pending
+    {% elif item.status == 'preparing' %}pill-preparing
+    {% elif item.status == 'served' %}pill-served
+    {% else %}pill-cancelled{% endif %}">
+    {% if item.status == 'pending' %}Chờ
+    {% elif item.status == 'preparing' %}Đang làm
+    {% elif item.status == 'served' %}Đã lên
+    {% else %}Huỷ{% endif %}
+  </span>
+</div>
+{% endif %}
+{% endfor %}
+
+{# Divider khi có cả món cũ + món mới #}
+<template x-if="cart.length > 0 && serverItemCount > 0">
+  <div class="px-4 py-1.5 bg-amber-50">
+    <p class="text-[11px] font-semibold text-amber-600 uppercase tracking-wide">Sắp gửi bếp</p>
+  </div>
+</template>
+
+{# Cart mới (Alpine) #}
+<template x-for="(entry, idx) in cart" :key="entry.item_id">
+  <div class="flex items-center gap-2 px-4 py-2.5">
+    <div class="flex-1 min-w-0">
+      <div class="text-sm font-medium text-gray-800 truncate" x-text="entry.name"></div>
+      <input type="text" x-model="entry.note" placeholder="Ghi chú..."
+             class="mt-0.5 w-full h-6 text-xs px-2 rounded border border-gray-200 focus:outline-none focus:ring-1 focus:ring-amber-400 text-gray-500"/>
+    </div>
+    <div class="flex items-center gap-1 shrink-0">
+      <button @click="updateQty(idx, -1)" aria-label="Giảm số lượng"
+              class="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-red-50 hover:border-red-300 hover:text-red-500 active:bg-red-50 transition-colors">
+        <i data-lucide="minus" class="w-4 h-4"></i>
+      </button>
+      <span class="w-7 text-center text-sm font-bold text-gray-800" x-text="entry.qty"></span>
+      <button @click="updateQty(idx, 1)" aria-label="Tăng số lượng"
+              class="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-green-50 hover:border-green-300 hover:text-green-600 active:bg-green-50 transition-colors">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+      </button>
+    </div>
+    <div class="text-sm font-bold text-amber-600 shrink-0 w-16 text-right"
+         x-text="fmt(entry.price * entry.qty)"></div>
+    <button @click="removeItem(idx)" aria-label="Bỏ món"
+            class="shrink-0 w-6 h-6 flex items-center justify-center text-gray-300 hover:text-red-400 active:text-red-400 transition-colors">
+      <i data-lucide="x" class="w-3.5 h-3.5"></i>
+    </button>
+  </div>
+</template>
+
+{# Empty state #}
+<template x-if="cart.length === 0 && serverItemCount === 0">
+  <div class="py-16 text-center text-gray-300">
+    <i data-lucide="shopping-cart" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
+    <p class="text-sm">Chọn món từ thực đơn</p>
+  </div>
+</template>

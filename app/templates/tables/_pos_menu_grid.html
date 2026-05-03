@@ -1,0 +1,41 @@
+{# Menu items grid — used by both desktop and mobile POS panels.
+   Parent must set:
+     gridCols      — Tailwind grid-cols classes (e.g. 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4')
+     cardHover     — Tailwind hover/active classes for available cards
+     wrapperBg     — Tailwind bg class for the scroll wrapper (e.g. 'bg-gray-50' or '')
+   Alpine context required: filteredItems, cartCount, addItem, fmt
+#}
+<div class="flex-1 overflow-y-auto no-scrollbar p-3 {{ wrapperBg }}">
+  <div class="grid {{ gridCols }} gap-2.5">
+    <template x-for="item in filteredItems" :key="item.id">
+      <div @click="addItem(item)"
+           :class="item.is_available ? '{{ cardHover }} cursor-pointer' : 'opacity-40 cursor-not-allowed'"
+           class="menu-card bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex flex-col gap-1.5 select-none">
+        <div class="flex items-start justify-between gap-1">
+          <span class="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-medium truncate"
+                x-text="item.category_name"></span>
+          <span x-show="cartCount(item.id) > 0"
+                class="shrink-0 w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center"
+                x-text="cartCount(item.id)"></span>
+        </div>
+        <div class="font-semibold text-sm text-gray-800 leading-snug" x-text="item.name"></div>
+        <div class="mt-auto flex items-center justify-between pt-1">
+          <span class="text-base font-bold text-amber-600" x-text="fmt(item.base_price)"></span>
+          <div x-show="item.is_available"
+               :class="cartCount(item.id) > 0 ? 'bg-amber-500' : 'bg-gray-100'"
+               class="w-7 h-7 rounded-full flex items-center justify-center transition-colors">
+            <i data-lucide="plus"
+               :class="cartCount(item.id) > 0 ? 'text-white' : 'text-gray-500'"
+               class="w-3.5 h-3.5"></i>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <div x-show="filteredItems.length === 0"
+         class="col-span-full py-16 text-center text-gray-400">
+      <i data-lucide="search-x" class="w-10 h-10 mx-auto mb-2 opacity-30"></i>
+      <p class="text-sm">Không tìm thấy món</p>
+    </div>
+  </div>
+</div>

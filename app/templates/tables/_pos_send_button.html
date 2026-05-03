@@ -1,0 +1,19 @@
+{# "Gửi bếp" button — used by desktop and mobile.
+   Alpine context required: cart, sending, sendToKitchen
+#}
+<button @click="sendToKitchen()"
+        :disabled="cart.length === 0 || sending"
+        :class="cart.length > 0 && !sending
+          ? 'bg-amber-500 hover:bg-amber-600 active:bg-amber-600 text-white shadow-sm'
+          : 'bg-gray-100 text-gray-400 cursor-not-allowed'"
+        class="w-full h-11 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
+  <template x-if="sending">
+    <span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+  </template>
+  <template x-if="!sending">
+    <i data-lucide="send" class="w-4 h-4"></i>
+  </template>
+  <span x-text="sending
+    ? 'Đang gửi...'
+    : (cart.length > 0 ? 'Gửi bếp (' + cart.length + ' loại)' : 'Chưa có món mới')"></span>
+</button>
