@@ -12,7 +12,8 @@
       <p class="text-xs text-gray-400 mt-0.5">Chỉ admin mới có quyền sửa</p>
     </div>
 
-    <form method="post" action="/finance/expenses/{{ expense.id }}/edit" class="px-5 py-5 space-y-4">
+    <form x-data="{ amount: '{{ expense.amount | int }}' }"
+          method="post" action="/finance/expenses/{{ expense.id }}/edit" class="px-5 py-5 space-y-4">
 
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1.5">Danh mục <span class="text-red-500">*</span></label>
@@ -32,15 +33,14 @@
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1.5">Số tiền (đ) <span class="text-red-500">*</span></label>
         <input
-          type="number"
-          inputmode="decimal"
-          name="amount"
-          value="{{ expense.amount | int }}"
-          min="1"
-          step="any"
+          type="text"
+          inputmode="numeric"
+          :value="amount ? Number(amount).toLocaleString('vi-VN') : ''"
+          @input="amount = $event.target.value.replace(/\D/g, '')"
           required
           class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
         />
+        <input type="hidden" name="amount" :value="amount" />
       </div>
 
       <div>
