@@ -4,13 +4,27 @@ const { q } = require('../db');
 const { requireAuth, requireAdminOrCashier } = require('../middleware/auth');
 
 // ─────────────────────────────────────────────
-// GET /payments/history — lịch sử hóa đơn
+// GET /payments/history — lịch sử hóa đơn (theo ngày / giai đoạn)
 // ─────────────────────────────────────────────
-router.get('/history', requireAdminOrCashier, (req, res) => {
-  const today = new Date().toISOString().slice(0, 10);
-  const date  = req.query.date || today;
+function ymd(d) {
+  // Local YYYY-MM-DD (tránh lệch UTC)
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
-  // Lấy danh sách orders hoàn thành trong ngày (kèm tổng hợp PTTT)
+router.get('/history', requireAdminOrCashier, (req, res) => {
+  const now = new Date();
+  const today = ymd(now);
+
+  // Backward compat: ?date_filter=YYYY-MM-DD hoặc ?date=...
+  const legacy = req.query.date_filter || req.query.date;
+  let start = req.query.start || legacy || today;
+  let end   = req.query.end   || legacy || today;
+  if (end < start) { const t = start; start = end; end = t; }
+
+  // Danh sách HĐ completed trong khoảng
   const orders = q.all(
     `SELECT o.id, o.order_code, o.final_amount, o.discount_amount,
             o.updated_at,
@@ -23,50 +37,101 @@ router.get('/history', requireAdminOrCashier, (req, res) => {
      LEFT JOIN payments p ON p.order_id = o.id
      LEFT JOIN payment_methods pm ON pm.id = p.method_id
      WHERE o.status = 'completed'
-       AND date(o.updated_at) = ?
+       AND date(o.updated_at) BETWEEN ? AND ?
      GROUP BY o.id
      ORDER BY o.updated_at DESC`,
-    date
+    start, end
   );
 
-  // Tổng doanh thu
-  const totalRevenue = orders.reduce((s, o) => s + (o.final_amount || 0), 0);
-
-  // Tiền mặt & chuyển khoản theo ngày
-  const cashRow = q.get(
-    `SELECT COALESCE(SUM(p.amount), 0) AS total
+  // Doanh thu theo ngày — tách 2 query (orders & payments), gộp trong JS để tránh
+  // double-count khi 1 order có nhiều payment.
+  const orderRows = q.all(
+    `SELECT date(o.updated_at) AS day,
+            COUNT(*)                        AS order_count,
+            COALESCE(SUM(o.final_amount), 0) AS revenue
+     FROM orders o
+     WHERE o.status = 'completed'
+       AND date(o.updated_at) BETWEEN ? AND ?
+     GROUP BY day`,
+    start, end
+  );
+  const payRows = q.all(
+    `SELECT date(o.updated_at) AS day,
+            COALESCE(SUM(CASE WHEN pm.name = 'Tiền mặt'    THEN p.amount END), 0) AS cash,
+            COALESCE(SUM(CASE WHEN pm.name = 'Chuyển khoản' THEN p.amount END), 0) AS transfer
      FROM payments p
      JOIN payment_methods pm ON pm.id = p.method_id
      JOIN orders o           ON o.id  = p.order_id
      WHERE o.status = 'completed'
-       AND date(o.updated_at) = ?
-       AND pm.name = 'Tiền mặt'`,
-    date
+       AND date(o.updated_at) BETWEEN ? AND ?
+     GROUP BY day`,
+    start, end
   );
-  const transferRow = q.get(
-    `SELECT COALESCE(SUM(p.amount), 0) AS total
+  const payByDay = {};
+  payRows.forEach(r => { payByDay[r.day] = r; });
+  const dailyBreakdown = orderRows.map(r => ({
+    day:         r.day,
+    order_count: r.order_count,
+    revenue:     r.revenue,
+    cash:        payByDay[r.day] ? payByDay[r.day].cash     : 0,
+    transfer:    payByDay[r.day] ? payByDay[r.day].transfer : 0,
+  })).sort((a, b) => b.day.localeCompare(a.day));
+
+  // Đơn hủy trong khoảng (cho audit)
+  const cancelledOrders = q.all(
+    `SELECT o.id, o.order_code, o.total_amount, o.note, o.updated_at,
+            t.name AS table_name,
+            u.full_name AS user_name
+     FROM orders o
+     JOIN tables t ON t.id = o.table_id
+     LEFT JOIN users u ON u.id = o.user_id
+     WHERE o.status = 'cancelled'
+       AND date(o.updated_at) BETWEEN ? AND ?
+     ORDER BY o.updated_at DESC`,
+    start, end
+  );
+
+  // Tổng tiền mặt / chuyển khoản
+  const totals = q.get(
+    `SELECT COALESCE(SUM(CASE WHEN pm.name = 'Tiền mặt'    THEN p.amount END), 0) AS cash,
+            COALESCE(SUM(CASE WHEN pm.name = 'Chuyển khoản' THEN p.amount END), 0) AS transfer
      FROM payments p
      JOIN payment_methods pm ON pm.id = p.method_id
      JOIN orders o           ON o.id  = p.order_id
      WHERE o.status = 'completed'
-       AND date(o.updated_at) = ?
-       AND pm.name = 'Chuyển khoản'`,
-    date
+       AND date(o.updated_at) BETWEEN ? AND ?`,
+    start, end
   );
 
-  const cashTotal     = cashRow     ? cashRow.total     : 0;
-  const transferTotal = transferRow ? transferRow.total : 0;
+  const totalRevenue  = orders.reduce((s, o) => s + (o.final_amount || 0), 0);
+  const cashTotal     = totals ? totals.cash     : 0;
+  const transferTotal = totals ? totals.transfer : 0;
+
+  // Preset URLs
+  const yest = new Date(now); yest.setDate(now.getDate() - 1);
+  const sixDaysAgo = new Date(now); sixDaysAgo.setDate(now.getDate() - 6);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthEnd   = new Date(now.getFullYear(), now.getMonth(), 0);
+
+  const presets = {
+    today:     { start: today,             end: today,             label: 'Hôm nay' },
+    yesterday: { start: ymd(yest),         end: ymd(yest),         label: 'Hôm qua' },
+    last7:     { start: ymd(sixDaysAgo),   end: today,             label: '7 ngày' },
+    thisMonth: { start: ymd(monthStart),   end: today,             label: 'Tháng này' },
+    prevMonth: { start: ymd(prevMonthStart), end: ymd(prevMonthEnd), label: 'Tháng trước' },
+  };
 
   res.render('payments/history.html', {
-    orders,
-    date,
-    totalRevenue,
-    cashTotal,
-    transferTotal,
-    // Aliases cho template cũ
-    date_filter:   date,
-    total_revenue: totalRevenue,
-    total_cash:    cashTotal,
+    orders, cancelledOrders, dailyBreakdown,
+    start, end,
+    isRange: start !== end,
+    totalRevenue, cashTotal, transferTotal,
+    presets,
+    // Aliases cho template / link cũ
+    date_filter:    start,
+    total_revenue:  totalRevenue,
+    total_cash:     cashTotal,
     total_transfer: transferTotal,
   });
 });
