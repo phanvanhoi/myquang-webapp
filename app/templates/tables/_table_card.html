@@ -63,16 +63,17 @@
   {# Nút hành động #}
   <div class="mt-auto pt-1">
     {% if tbl.status == 'available' %}
-    <button
-      type="button"
-      @click="openTable({{ tbl.id }}, '{{ tbl.name }}')"
-      class="w-full h-10 bg-amber-500 hover:bg-amber-600 active:bg-amber-700
-             text-white text-xs font-semibold rounded-lg transition shadow-sm
-             flex items-center justify-center gap-1.5"
-    >
-      <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
-      Mở bàn
-    </button>
+    <form action="/tables/{{ tbl.id }}/open" method="post">
+      <button
+        type="submit"
+        class="w-full h-10 bg-amber-500 hover:bg-amber-600 active:bg-amber-700
+               text-white text-xs font-semibold rounded-lg transition shadow-sm
+               flex items-center justify-center gap-1.5"
+      >
+        <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+        Mở bàn
+      </button>
+    </form>
 
     {% elif tbl.status in ('occupied', 'reserved') and order %}
     <a
