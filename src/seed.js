@@ -86,6 +86,13 @@ function seed() {
       );
     }
 
+    // ── Sentinel: Mang về (không hiện trên sơ đồ bàn) ──
+    q.run(
+      `INSERT INTO tables (floor_id, code, name, capacity, status, is_active, is_takeaway)
+       VALUES (?, 'MV', 'Mang về', 0, 'available', 1, 1)`,
+      f1.lastInsertRowid
+    );
+
     // ── Menu Categories ──
     const catMiQuang  = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Mì Quảng Truyền Thống', 1);
     const catBunMam   = q.run(`INSERT INTO menu_categories (name, sort_order) VALUES (?,?)`, 'Bún Mắm Nêm', 2);

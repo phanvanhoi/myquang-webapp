@@ -27,7 +27,7 @@ router.get('/history', requireAdminOrCashier, (req, res) => {
   // Danh sách HĐ completed trong khoảng
   const orders = q.all(
     `SELECT o.id, o.order_code, o.final_amount, o.discount_amount,
-            o.updated_at,
+            o.updated_at, o.order_type,
             t.name  AS table_name,
             t.code  AS table_code,
             GROUP_CONCAT(pm.name, ', ') AS payment_methods,

@@ -129,7 +129,10 @@ router.post('/:id/add-items', requireAuth, (req, res) => {
       );
     }
 
-    return res.json({ success: true, redirect: '/tables/' + order.table_id + '/order' });
+    const redirectUrl = order.order_type === 'takeaway'
+      ? '/takeaway/' + order.id
+      : '/tables/' + order.table_id + '/order';
+    return res.json({ success: true, redirect: redirectUrl });
   } catch (err) {
     return res.status(400).json({ success: false, error: err.message });
   }

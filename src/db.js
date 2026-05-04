@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS tables (
   status TEXT NOT NULL DEFAULT 'available'
     CHECK (status IN ('available','occupied','reserved','cleaning')),
   is_active INTEGER NOT NULL DEFAULT 1,
+  is_takeaway INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
@@ -108,6 +109,8 @@ CREATE TABLE IF NOT EXISTS orders (
   order_code TEXT NOT NULL UNIQUE,
   status TEXT NOT NULL DEFAULT 'open'
     CHECK (status IN ('open','serving','completed','cancelled')),
+  order_type TEXT NOT NULL DEFAULT 'dine_in'
+    CHECK (order_type IN ('dine_in','takeaway')),
   note TEXT,
   guest_count INTEGER NOT NULL DEFAULT 1,
   total_amount REAL NOT NULL DEFAULT 0,

@@ -19,7 +19,7 @@ router.get('/', (req, res) => {
     `SELECT * FROM rooms WHERE is_active = 1 ORDER BY floor_id, sort_order, id`
   );
 
-  // 3. Lấy tất cả bàn đang hoạt động (kèm floor/room info)
+  // 3. Lấy tất cả bàn đang hoạt động (kèm floor/room info) — bỏ qua sentinel mang về
   const tables = q.all(
     `SELECT t.*,
             f.name as floor_name,
@@ -27,8 +27,20 @@ router.get('/', (req, res) => {
      FROM tables t
      JOIN floors f ON f.id = t.floor_id
      LEFT JOIN rooms r ON r.id = t.room_id
-     WHERE t.is_active = 1
+     WHERE t.is_active = 1 AND t.is_takeaway = 0
      ORDER BY f.sort_order, r.sort_order, t.id`
+  );
+
+  // 3b. Đơn mang về đang xử lý
+  const takeawayOrders = q.all(
+    `SELECT o.*,
+            u.full_name as user_full_name,
+            (SELECT COUNT(*) FROM order_items oi
+              WHERE oi.order_id = o.id AND oi.status != 'cancelled') as item_count
+     FROM orders o
+     LEFT JOIN users u ON u.id = o.user_id
+     WHERE o.order_type = 'takeaway' AND o.status IN ('open','serving')
+     ORDER BY o.created_at DESC`
   );
 
   // 4. Với mỗi bàn, lấy active order (nếu có)
@@ -101,7 +113,7 @@ router.get('/', (req, res) => {
     return { floor, sections };
   });
 
-  res.render('tables/index.html', { floors, tablesByFloor, floors_data });
+  res.render('tables/index.html', { floors, tablesByFloor, floors_data, takeawayOrders });
 });
 
 // ─────────────────────────────────────────────
@@ -111,7 +123,7 @@ router.post('/:id/open', (req, res) => {
   const tableId = parseInt(req.params.id);
   const guestCount = parseInt(req.body.guest_count) || 1;
 
-  const table = q.get(`SELECT * FROM tables WHERE id = ? AND is_active = 1`, tableId);
+  const table = q.get(`SELECT * FROM tables WHERE id = ? AND is_active = 1 AND is_takeaway = 0`, tableId);
   if (!table) {
     res.flash('error', 'Bàn không tồn tại.');
     return res.redirect('/tables');
@@ -190,7 +202,7 @@ router.get('/:id/order', (req, res) => {
      FROM tables t
      JOIN floors f ON f.id = t.floor_id
      LEFT JOIN rooms r ON r.id = t.room_id
-     WHERE t.id = ? AND t.is_active = 1`,
+     WHERE t.id = ? AND t.is_active = 1 AND t.is_takeaway = 0`,
     tableId
   );
 
@@ -257,16 +269,16 @@ router.get('/:id/order', (req, res) => {
 router.post('/:id/close', (req, res) => {
   const tableId = parseInt(req.params.id);
 
-  const table = q.get(`SELECT * FROM tables WHERE id = ? AND is_active = 1`, tableId);
+  const table = q.get(`SELECT * FROM tables WHERE id = ? AND is_active = 1 AND is_takeaway = 0`, tableId);
   if (!table) {
     res.flash('error', 'Bàn không tồn tại.');
     return res.redirect('/tables');
   }
 
   const closeTable = q.transaction(() => {
-    // Lấy tất cả order đang mở của bàn này
+    // Lấy tất cả order đang mở của bàn này (chỉ dine-in để không đụng đơn mang về)
     const openOrders = q.all(
-      `SELECT id FROM orders WHERE table_id = ? AND status IN ('open','serving')`,
+      `SELECT id FROM orders WHERE table_id = ? AND status IN ('open','serving') AND order_type = 'dine_in'`,
       tableId
     );
 

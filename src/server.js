@@ -87,6 +87,7 @@ app.use((req, res, next) => {
 // ── Routes ──
 app.use('/',        require('./routes/auth'));
 app.use('/tables',  require('./routes/tables'));
+app.use('/takeaway',require('./routes/takeaway'));
 app.use('/menu',    require('./routes/menu'));
 app.use('/orders',  require('./routes/orders'));
 app.use('/payments',require('./routes/payments'));
