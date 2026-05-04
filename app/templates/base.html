@@ -2,8 +2,18 @@
 <html lang="vi" x-data="{ sidebarOpen: false }">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>{% block title %}MyQuang{% endblock %} — Quán Ăn MyQuang</title>
+
+  {# ── PWA / Add to Home Screen ── #}
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#d97706" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MyQuang" />
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -42,6 +52,13 @@
     @keyframes fadeOut{from{opacity:1}to{opacity:0;pointer-events:none}}
     @media print{.no-print{display:none!important}.print-only{display:block!important}}
     .print-only{display:none}
+    /* Safe area cho iPhone (notch / home indicator) — chỉ áp dụng khi cài Add to Home Screen */
+    @media (display-mode: standalone) {
+      body{
+        padding-top:env(safe-area-inset-top);
+        padding-bottom:env(safe-area-inset-bottom);
+      }
+    }
   </style>
   {% block head %}{% endblock %}
 </head>

@@ -1,0 +1,16 @@
+{
+  "name": "MyQuang — Quán Ăn",
+  "short_name": "MyQuang",
+  "description": "Hệ thống quản lý quán ăn MyQuang",
+  "start_url": "/tables",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fffbeb",
+  "theme_color": "#d97706",
+  "lang": "vi",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
