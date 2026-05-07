@@ -18,8 +18,10 @@
   /* Mobile bottom sheet (chỉ áp dụng <lg) */
   @media (max-width: 1023px) {
     main { padding: 0 !important; }
+    /* dvh = dynamic viewport height: trừ thanh URL/toolbar iOS Safari thay vì 100vh
+       (100vh trên iOS gồm cả phần thanh, làm sheet bị che) */
     .pos-mobile {
-      height: calc(100vh - 57px);
+      height: calc(100dvh - 57px);
       position: relative;
       overflow: hidden;
     }
@@ -38,7 +40,8 @@
       z-index: 30;
     }
     .sheet-collapsed { height: 64px; }
-    .sheet-expanded  { height: 70vh; }
+    /* Bound bằng dvh + đảm bảo còn 80px top luôn thấy được trên màn hình ngắn */
+    .sheet-expanded  { height: min(70dvh, calc(100dvh - 80px - 57px)); }
     .sheet-handle    { height: 64px; flex-shrink: 0; }
     .cart-body {
       flex: 1;
