@@ -174,17 +174,16 @@
   updateClock();
   setInterval(updateClock,1000);
 
-  // Flash toast từ sessionStorage (set bởi action AJAX trước khi redirect).
-  (function(){
-    const flashMsg = sessionStorage.getItem('flash_kitchen');
-    if (!flashMsg) return;
-    sessionStorage.removeItem('flash_kitchen');
+  // Render success toast set qua sessionStorage trước redirect (xem `tables/order_detail.html`).
+  const flashMsg = sessionStorage.getItem('flash_message');
+  if (flashMsg) {
+    sessionStorage.removeItem('flash_message');
     const toast = document.createElement('div');
     toast.className = 'fixed top-16 md:top-4 right-4 left-4 md:left-auto z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-green-500 text-white toast';
     toast.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' + flashMsg;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3500);
-  })();
+  }
 </script>
 {% block scripts %}{% endblock %}
 </body>

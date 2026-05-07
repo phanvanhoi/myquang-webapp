@@ -259,6 +259,22 @@ const q = {
     return `ORD-${today}-${seq}`;
   },
 
+  // Lookup active dine-in order for a table.
+  // requireItems=true → only when at least 1 non-cancelled item (used to drive UI "occupied" badge);
+  // requireItems=false → only when zero non-cancelled items (used to reuse empty open orders).
+  findActiveOrderForTable: (tableId, { requireItems = true } = {}) => {
+    const having = requireItems ? 'COUNT(oi.id) > 0' : 'COUNT(oi.id) = 0';
+    return db.prepare(`
+      SELECT o.*, COUNT(oi.id) as item_count
+      FROM orders o
+      LEFT JOIN order_items oi ON oi.order_id = o.id AND oi.status != 'cancelled'
+      WHERE o.table_id = ? AND o.status IN ('open','serving')
+      GROUP BY o.id
+      HAVING ${having}
+      LIMIT 1
+    `).get([tableId]) || null;
+  },
+
   // Recalculate order totals
   recalcOrder: (orderId) => {
     const row = db.prepare(`

@@ -43,23 +43,11 @@ router.get('/', (req, res) => {
      ORDER BY o.created_at DESC`
   );
 
-  // 4. Với mỗi bàn, lấy active order (nếu có)
-  // _table_card.html expects: entry = { table, active_order }
-  const tableEntries = tables.map(table => {
-    // Chỉ coi là "active" nếu order có ít nhất 1 món chưa hủy
-    // (order rỗng vẫn ở DB nhưng bàn nhìn như "Trống").
-    const active_order = q.get(
-      `SELECT o.*, COUNT(oi.id) as item_count
-       FROM orders o
-       LEFT JOIN order_items oi ON oi.order_id = o.id AND oi.status != 'cancelled'
-       WHERE o.table_id = ? AND o.status IN ('open','serving')
-       GROUP BY o.id
-       HAVING COUNT(oi.id) > 0
-       LIMIT 1`,
-      table.id
-    ) || null;
-    return { table, active_order };
-  });
+  // entry shape consumed by tables/index.html: { table, active_order }
+  const tableEntries = tables.map(table => ({
+    table,
+    active_order: q.findActiveOrderForTable(table.id, { requireItems: true }),
+  }));
 
   // 5. Build floors_data structure used by index.html template
   // Template iterates: {% for entry in fd.tables_by_room[None] %} and {% for entry in fd.tables_by_room[room.id] %}
@@ -132,55 +120,42 @@ router.post('/:id/open', (req, res) => {
     return res.redirect('/tables');
   }
 
-  // Reuse order rỗng (mở trước đó nhưng chưa gọi món) thay vì tạo trùng.
-  const existingEmpty = q.get(
-    `SELECT o.id FROM orders o
-     LEFT JOIN order_items oi ON oi.order_id = o.id AND oi.status != 'cancelled'
-     WHERE o.table_id = ? AND o.status IN ('open','serving')
-     GROUP BY o.id
-     HAVING COUNT(oi.id) = 0
-     LIMIT 1`,
-    tableId
-  );
+  // Reuse trước khi tạo mới: tránh ngốn order_code và để staff "mở lại" cùng order rỗng.
+  const existingEmpty = q.findActiveOrderForTable(tableId, { requireItems: false });
 
   if (existingEmpty) {
-    q.run(
-      `UPDATE orders SET guest_count = ?, updated_at = datetime('now','localtime') WHERE id = ?`,
-      guestCount, existingEmpty.id
-    );
-    // Đảm bảo table.status nhất quán (có thể đã bị set khác)
-    q.run(
-      `UPDATE tables SET status = 'occupied', updated_at = datetime('now','localtime') WHERE id = ?`,
-      tableId
-    );
+    q.transaction(() => {
+      q.run(
+        `UPDATE orders SET guest_count = ?, updated_at = datetime('now','localtime') WHERE id = ?`,
+        guestCount, existingEmpty.id
+      );
+      q.run(
+        `UPDATE tables SET status = 'occupied', updated_at = datetime('now','localtime') WHERE id = ?`,
+        tableId
+      );
+    })();
     return res.redirect(`/tables/${tableId}/order`);
   }
 
-  // Khi không có order rỗng tái dùng, chỉ cho mở bàn nếu DB status là available
-  // (chặn tạo 2 order song song trên cùng bàn đang phục vụ).
+  // Chặn tạo order song song khi bàn đang phục vụ
   if (table.status !== 'available') {
     res.flash('error', `Bàn ${table.name} đang phục vụ, không thể mở mới.`);
     return res.redirect('/tables');
   }
 
   const orderCode = q.generateOrderCode();
-
-  const openTable = q.transaction(() => {
-    const result = q.run(
+  q.transaction(() => {
+    q.run(
       `INSERT INTO orders (table_id, user_id, order_code, status, guest_count, created_at, updated_at)
        VALUES (?, ?, ?, 'open', ?, datetime('now','localtime'), datetime('now','localtime'))`,
       tableId, req.session.userId, orderCode, guestCount
     );
-
     q.run(
       `UPDATE tables SET status = 'occupied', updated_at = datetime('now','localtime') WHERE id = ?`,
       tableId
     );
+  })();
 
-    return result.lastInsertRowid;
-  });
-
-  openTable();
   res.redirect(`/tables/${tableId}/order`);
 });
 

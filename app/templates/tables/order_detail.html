@@ -460,7 +460,7 @@ function posOrder(menuItems, orderId, serverItemCount, existingTotal) {
         const data = await resp.json();
         if (data.success) {
           this.cartOpen = false;
-          sessionStorage.setItem('flash_kitchen', `Đã gửi ${count} loại món vào bếp.`);
+          sessionStorage.setItem('flash_message', `Đã gửi ${count} loại món vào bếp.`);
           window.location.href = data.redirect || window.location.pathname;
         } else {
           this.sending = false;
@@ -488,7 +488,7 @@ async function serverItemQty(orderId, itemId, newQty) {
     });
     const data = await resp.json();
     if (data.success) {
-      sessionStorage.setItem('flash_kitchen', `Đã cập nhật số lượng.`);
+      sessionStorage.setItem('flash_message', `Đã cập nhật số lượng.`);
       window.location.reload();
     } else {
       alert(data.error || 'Có lỗi xảy ra.');
@@ -508,7 +508,7 @@ async function serverItemCancel(orderId, itemId, name) {
     });
     const data = await resp.json();
     if (data.success) {
-      sessionStorage.setItem('flash_kitchen', `Đã hủy món.`);
+      sessionStorage.setItem('flash_message', `Đã hủy món.`);
       window.location.reload();
     } else {
       alert(data.error || 'Có lỗi xảy ra.');
@@ -518,7 +518,6 @@ async function serverItemCancel(orderId, itemId, name) {
   }
 }
 
-// Flash toast nay đã được handle ở base.html sau redirect.
 document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
 document.addEventListener('alpine:mutated', () => lucide.createIcons());
 </script>

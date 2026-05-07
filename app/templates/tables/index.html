@@ -222,7 +222,7 @@
               {% set tbl = entry.table %}
               {% set order = entry.active_order %}
 
-              {# Display status: bàn 'occupied' nhưng không có món được hiện như 'available' #}
+              {# Bàn 'occupied' nhưng order rỗng → hiện 'Trống'; DB row giữ nguyên để staff mở lại reuse cùng order. #}
               {% set displayStatus = tbl.status %}
               {% if tbl.status == 'occupied' and not order %}
                 {% set displayStatus = 'available' %}
