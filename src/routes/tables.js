@@ -32,6 +32,7 @@ router.get('/', (req, res) => {
   );
 
   // 3b. Đơn mang về đang xử lý
+  // Lọc ra delivery orders (đặt online) — chúng hiển thị riêng ở /orders, không trộn vào takeaway tại quán.
   const takeawayOrders = q.all(
     `SELECT o.*,
             u.full_name as user_full_name,
@@ -40,6 +41,7 @@ router.get('/', (req, res) => {
      FROM orders o
      LEFT JOIN users u ON u.id = o.user_id
      WHERE o.order_type = 'takeaway' AND o.status IN ('open','serving')
+       AND (o.customer_address IS NULL OR o.customer_address = '')
      ORDER BY o.created_at DESC`
   );
 

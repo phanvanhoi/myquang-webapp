@@ -97,20 +97,21 @@ router.get('/items/new', requireAdmin, (req, res) => {
 
 // POST /items — Tạo món mới
 router.post('/items', requireAdmin, (req, res) => {
-  const { category_id, name, description, base_price, sort_order, is_available } = req.body;
+  const { category_id, name, description, base_price, sort_order, is_available, image_url } = req.body;
   if (!name || !name.trim()) {
     res.flash('error', 'Tên món không được để trống');
     return res.redirect('/menu/items/new');
   }
   q.run(
-    `INSERT INTO menu_items (category_id, name, description, base_price, sort_order, is_available)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO menu_items (category_id, name, description, base_price, sort_order, is_available, image_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     parseInt(category_id),
     name.trim(),
     description || '',
     parseFloat(base_price) || 0,
     parseInt(sort_order) || 0,
-    is_available ? 1 : 0
+    is_available ? 1 : 0,
+    (image_url || '').trim() || null
   );
   res.flash('success', `Đã thêm món "${name.trim()}"`);
   res.redirect('/menu');
@@ -137,7 +138,7 @@ router.get('/items/:id/edit', requireAdmin, (req, res) => {
 // POST /items/:id/edit — Cập nhật món
 router.post('/items/:id/edit', requireAdmin, (req, res) => {
   const { id } = req.params;
-  const { category_id, name, description, base_price, sort_order, is_available } = req.body;
+  const { category_id, name, description, base_price, sort_order, is_available, image_url } = req.body;
   if (!name || !name.trim()) {
     res.flash('error', 'Tên món không được để trống');
     return res.redirect('/menu/items/' + id + '/edit');
@@ -145,7 +146,8 @@ router.post('/items/:id/edit', requireAdmin, (req, res) => {
   q.run(
     `UPDATE menu_items
      SET category_id = ?, name = ?, description = ?, base_price = ?,
-         sort_order = ?, is_available = ?, updated_at = datetime('now','localtime')
+         sort_order = ?, is_available = ?, image_url = ?,
+         updated_at = datetime('now','localtime')
      WHERE id = ?`,
     parseInt(category_id),
     name.trim(),
@@ -153,6 +155,7 @@ router.post('/items/:id/edit', requireAdmin, (req, res) => {
     parseFloat(base_price) || 0,
     parseInt(sort_order) || 0,
     is_available ? 1 : 0,
+    (image_url || '').trim() || null,
     id
   );
   res.flash('success', 'Đã cập nhật món ăn');

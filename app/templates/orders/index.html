@@ -37,11 +37,19 @@
         <tr class="hover:bg-amber-50/40 transition-colors">
           <td class="px-5 py-3 font-mono text-xs text-gray-500">{{ order.order_code }}</td>
           <td class="px-5 py-3 font-semibold text-gray-800">
+            {% if order.customer_address %}
+            <span class="flex items-center gap-1.5">
+              <i data-lucide="bike" class="w-3.5 h-3.5 text-amber-600"></i>
+              {{ order.customer_name or 'Khách' }}
+              <span class="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Giao hàng</span>
+            </span>
+            {% else %}
             <span class="flex items-center gap-1.5">
               <i data-lucide="armchair" class="w-3.5 h-3.5 text-amber-500"></i>
               {{ order.table_name }}
               {% if order.table_code %}<span class="text-xs text-gray-400 font-mono">({{ order.table_code }})</span>{% endif %}
             </span>
+            {% endif %}
           </td>
           <td class="px-5 py-3 text-gray-500">{{ order.created_at | dt }}</td>
           <td class="px-5 py-3 text-center">
@@ -83,10 +91,18 @@
     <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
       <div class="flex items-start justify-between mb-3">
         <div>
+          {% if order.customer_address %}
+          <div class="font-semibold text-gray-800 flex items-center gap-1.5">
+            <i data-lucide="bike" class="w-4 h-4 text-amber-600"></i>
+            {{ order.customer_name or 'Khách' }}
+            <span class="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Giao</span>
+          </div>
+          {% else %}
           <div class="font-semibold text-gray-800 flex items-center gap-1.5">
             <i data-lucide="armchair" class="w-4 h-4 text-amber-500"></i>
             {{ order.table_name }}
           </div>
+          {% endif %}
           <div class="text-xs text-gray-400 mt-0.5 font-mono">{{ order.order_code }}</div>
         </div>
         {% if order.status == 'open' %}

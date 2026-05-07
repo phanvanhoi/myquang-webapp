@@ -19,6 +19,7 @@
 
     <!-- Form -->
     <form
+      x-data="{ imageUrl: '{{ (item.image_url if item and item.image_url else '') | replace("'", "\\'") }}' }"
       method="post"
       action="{% if item %}/menu/items/{{ item.id }}/edit{% else %}/menu/items{% endif %}"
       class="p-6 space-y-5"
@@ -66,6 +67,29 @@
           placeholder="Mô tả ngắn về món ăn..."
           class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent resize-none"
         >{{ item.description if item and item.description else '' }}</textarea>
+      </div>
+
+      <!-- Image URL -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">URL ảnh món</label>
+        <div class="flex gap-3">
+          <input
+            type="url"
+            name="image_url"
+            x-model="imageUrl"
+            placeholder="https://i.imgur.com/abc.jpg hoặc bỏ trống"
+            class="flex-1 h-11 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent"
+          />
+          <div class="w-16 h-16 rounded-lg border-2 border-dashed border-gray-200 overflow-hidden flex items-center justify-center bg-gray-50 shrink-0">
+            <img x-show="imageUrl" :src="imageUrl"
+                 @error="$el.style.display='none'; $el.nextElementSibling.style.display='flex'"
+                 @load="$el.style.display='block'; $el.nextElementSibling.style.display='none'"
+                 class="w-full h-full object-cover" />
+            <i data-lucide="image" class="w-6 h-6 text-gray-300"
+               :style="imageUrl ? 'display:none' : ''"></i>
+          </div>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">Khuyến nghị Imgur, Cloudinary, Google Drive (link trực tiếp). Tỷ lệ vuông đẹp nhất.</p>
       </div>
 
       <!-- Giá + Thứ tự -->

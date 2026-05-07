@@ -5,12 +5,47 @@
 {% block content %}
 <div class="max-w-3xl mx-auto space-y-4 pb-20 md:pb-0">
 
+  {# ── Customer info section (chỉ cho delivery — order có địa chỉ) ── #}
+  {% if order.customer_address %}
+  <div class="bg-amber-50 rounded-2xl border border-amber-200 shadow-sm p-4">
+    <div class="flex items-center gap-2 mb-3">
+      <div class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white">
+        <i data-lucide="bike" class="w-4 h-4"></i>
+      </div>
+      <div>
+        <p class="text-xs text-amber-700 font-semibold uppercase tracking-wide">Đơn giao hàng</p>
+        <p class="text-sm font-bold text-gray-800">{{ order.customer_name or '—' }}</p>
+      </div>
+    </div>
+    <div class="space-y-1.5 text-sm">
+      {% if order.customer_phone %}
+      <div class="flex items-start gap-2">
+        <i data-lucide="phone" class="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0"></i>
+        <a href="tel:{{ order.customer_phone }}" class="text-amber-700 font-medium hover:underline">{{ order.customer_phone }}</a>
+      </div>
+      {% endif %}
+      <div class="flex items-start gap-2">
+        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0"></i>
+        <span class="text-gray-700">{{ order.customer_address }}</span>
+      </div>
+      {% if order.customer_note %}
+      <div class="flex items-start gap-2">
+        <i data-lucide="message-circle" class="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0"></i>
+        <span class="text-amber-700 italic">{{ order.customer_note }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
   <!-- ── Order info bar ── -->
   <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
     <div class="grid grid-cols-2 md:flex md:flex-wrap gap-4 md:gap-6">
       <div>
-        <p class="text-xs text-gray-400">Bàn</p>
-        <p class="font-bold text-gray-800">{{ order.table_name }}</p>
+        <p class="text-xs text-gray-400">{% if order.customer_address %}Loại{% else %}Bàn{% endif %}</p>
+        <p class="font-bold text-gray-800">
+          {% if order.customer_address %}Giao hàng{% else %}{{ order.table_name }}{% endif %}
+        </p>
       </div>
       <div>
         <p class="text-xs text-gray-400">Mã bàn</p>
