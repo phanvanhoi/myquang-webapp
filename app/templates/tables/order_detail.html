@@ -320,18 +320,19 @@
       {% include "tables/_pos_send_button.html" %}
 
       <template x-if="cartOpen">
-        <div class="flex gap-2">
+        <div class="space-y-2">
           <a href="/payments/{{ order.id }}"
-             class="flex-1 h-10 rounded-xl bg-green-600 active:bg-green-700 text-white text-sm font-bold
-                    flex items-center justify-center gap-1.5 transition-colors shadow-sm">
+             class="w-full h-11 rounded-xl bg-green-600 active:bg-green-700 text-white text-sm font-bold
+                    flex items-center justify-center gap-2 transition-colors shadow-sm">
             <i data-lucide="credit-card" class="w-4 h-4"></i>
             Thanh toán
           </a>
           {% if session.role == 'admin' or session.role == 'cashier' %}
           <button type="button" @click="cancelOpen = true"
-                  aria-label="Hủy order"
-                  class="shrink-0 w-10 h-10 rounded-xl border border-red-200 text-red-500 active:bg-red-50 flex items-center justify-center transition-colors">
+                  class="w-full h-10 rounded-xl border border-red-200 text-red-500 active:bg-red-50 text-sm font-medium
+                         flex items-center justify-center gap-1.5 transition-colors">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
+            Hủy order
           </button>
           {% endif %}
         </div>
