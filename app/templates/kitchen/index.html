@@ -61,8 +61,15 @@
       </button>
     </div>
 
-    {# Refresh status #}
+    {# Sound toggle + Refresh status #}
     <div class="flex items-center gap-2 text-xs text-gray-400">
+      <button @click="toggleSound()"
+              :title="soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'"
+              :class="soundEnabled ? 'bg-amber-100 text-amber-700 border-amber-300' : 'bg-white text-gray-500 border-gray-200'"
+              class="flex items-center gap-1 px-2 h-7 rounded border transition-colors">
+        <i :data-lucide="soundEnabled ? 'volume-2' : 'volume-x'" class="w-3.5 h-3.5"></i>
+        <span x-text="soundEnabled ? 'Đang bật' : 'Tắt'"></span>
+      </button>
       <span x-show="!refreshing" class="flex items-center gap-1">
         <span class="w-2 h-2 rounded-full bg-green-500"></span>
         Auto-refresh 10s · cập nhật <span x-text="lastUpdate"></span>
@@ -72,7 +79,8 @@
         Đang tải...
       </span>
       <button @click="refresh()" :disabled="refreshing"
-              class="ml-2 px-2 h-7 rounded border border-gray-200 hover:bg-gray-50 text-gray-600 transition-colors">
+              aria-label="Làm mới"
+              class="px-2 h-7 rounded border border-gray-200 hover:bg-gray-50 text-gray-600 transition-colors">
         <i data-lucide="refresh-cw" class="w-3 h-3"></i>
       </button>
     </div>
@@ -194,12 +202,62 @@ function kitchenApp(initial) {
     refreshing: false,
     busy: {},
     lastUpdate: 'vừa xong',
+    soundEnabled: localStorage.getItem('kitchen_sound') === '1',
     _pollerId: null,
+    _seenIds: new Set(),
+    _audioCtx: null,
 
     init() {
       this.lastUpdate = this.formatTime(new Date());
+      // Đánh dấu các món hiện có là "đã thấy" để không kêu cho item cũ khi load page
+      this.items.forEach(it => this._seenIds.add(it.id));
       this._pollerId = setInterval(() => this.refresh(), 10000);
       this.$nextTick(() => lucide.createIcons());
+    },
+
+    toggleSound() {
+      this.soundEnabled = !this.soundEnabled;
+      localStorage.setItem('kitchen_sound', this.soundEnabled ? '1' : '0');
+      // Khởi tạo AudioContext sau interaction (browser policy)
+      if (this.soundEnabled) {
+        this.ensureAudio();
+        this.beep(); // beep test xác nhận đã bật
+      }
+      this.$nextTick(() => lucide.createIcons());
+    },
+
+    ensureAudio() {
+      if (!this._audioCtx) {
+        try {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          this._audioCtx = new Ctx();
+        } catch (e) {}
+      }
+      // Resume nếu suspended (Chrome autoplay policy)
+      if (this._audioCtx && this._audioCtx.state === 'suspended') {
+        this._audioCtx.resume();
+      }
+    },
+
+    beep(tones) {
+      if (!this.soundEnabled || !this._audioCtx) return;
+      const ctx = this._audioCtx;
+      const sequence = tones || [880, 1175]; // A5, D6 (ding ding)
+      const now = ctx.currentTime;
+      sequence.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const start = now + i * 0.18;
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(0.18, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.16);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.18);
+      });
     },
 
     countByStatus(s) {
@@ -263,8 +321,16 @@ function kitchenApp(initial) {
         const resp = await fetch('/kitchen/data');
         const data = await resp.json();
         if (data.success) {
+          // Detect món mới (id chưa từng thấy)
+          const newIds = data.items
+            .filter(it => !this._seenIds.has(it.id))
+            .map(it => it.id);
           this.items = data.items;
           this.lastUpdate = this.formatTime(new Date());
+          if (newIds.length > 0) {
+            newIds.forEach(id => this._seenIds.add(id));
+            this.beep();
+          }
         }
       } catch (e) {
         // silent fail; will retry next interval
