@@ -4,15 +4,9 @@
 
 {% block head %}
 <style>
-  .pill-pending   { background:#fef9c3; color:#92400e; }
-  .pill-preparing { background:#ffedd5; color:#9a3412; }
-  .age-warn { color:#b45309; }
+  /* .pill-* defined globally in base.html */
+  .age-warn   { color:#b45309; }
   .age-danger { color:#b91c1c; font-weight: 700; }
-  @keyframes pulse-new {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,.5); }
-    50%      { box-shadow: 0 0 0 8px rgba(245,158,11,0); }
-  }
-  .new-item { animation: pulse-new 1.5s ease-out 2; }
 </style>
 {% endblock %}
 
@@ -47,17 +41,17 @@
       <button @click="filter = 'all'"
               :class="filter === 'all' ? 'bg-gray-100 text-gray-800' : 'bg-white text-gray-500'"
               class="px-3 h-9 font-medium transition-colors border-r border-gray-200">
-        Tất cả (<span x-text="items.length"></span>)
+        Tất cả (<span x-text="counts.total"></span>)
       </button>
       <button @click="filter = 'pending'"
               :class="filter === 'pending' ? 'pill-pending font-semibold' : 'bg-white text-gray-500'"
               class="px-3 h-9 transition-colors border-r border-gray-200">
-        Chờ (<span x-text="countByStatus('pending')"></span>)
+        Chờ (<span x-text="counts.pending"></span>)
       </button>
       <button @click="filter = 'preparing'"
               :class="filter === 'preparing' ? 'pill-preparing font-semibold' : 'bg-white text-gray-500'"
               class="px-3 h-9 transition-colors">
-        Đang làm (<span x-text="countByStatus('preparing')"></span>)
+        Đang làm (<span x-text="counts.preparing"></span>)
       </button>
     </div>
 
@@ -128,19 +122,17 @@
           <template x-for="it in grp.items" :key="it.id">
             <div class="px-4 py-3 flex items-center gap-3">
               <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
-                    :class="it.status === 'pending' ? 'pill-pending' : 'pill-preparing'"
-                    x-text="it.status === 'pending' ? 'Chờ' : 'Làm'"></span>
+                    :class="'pill-' + it.status"
+                    x-text="STATUS_LABEL[it.status]"></span>
               <div class="flex-1 min-w-0">
                 <div class="font-semibold text-gray-800 truncate" x-text="it.item_name + ' ×' + it.quantity"></div>
                 <div x-show="it.note" class="text-xs text-amber-600 italic truncate" x-text="it.note"></div>
               </div>
               <button @click="advance(it)"
-                      :disabled="busy[it.id]"
+                      :disabled="isBusy(it.id)"
                       class="shrink-0 h-8 px-3 rounded-lg text-xs font-bold transition-colors"
-                      :class="it.status === 'pending'
-                        ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                        : 'bg-green-500 hover:bg-green-600 text-white'"
-                      x-text="busy[it.id] ? '...' : (it.status === 'pending' ? 'Bắt đầu' : 'Đã lên')"></button>
+                      :class="actionClass(it)"
+                      x-text="isBusy(it.id) ? '...' : actionLabel(it)"></button>
             </div>
           </template>
         </div>
@@ -159,9 +151,9 @@
 
         <div class="flex items-center justify-between">
           <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                :class="it.status === 'pending' ? 'pill-pending' : 'pill-preparing'"
-                x-text="it.status === 'pending' ? 'Chờ' : 'Đang làm'"></span>
-          <span class="text-xs" :class="ageClass(itemAge(it))" x-text="formatAge(itemAge(it))"></span>
+                :class="'pill-' + it.status"
+                x-text="STATUS_LABEL[it.status]"></span>
+          <span class="text-xs" :class="ageClass(it._age)" x-text="formatAge(it._age)"></span>
         </div>
 
         <div class="font-bold text-gray-800 text-base leading-tight" x-text="it.item_name"></div>
@@ -177,14 +169,10 @@
         </div>
 
         <button @click="advance(it)"
-                :disabled="busy[it.id]"
+                :disabled="isBusy(it.id)"
                 class="w-full h-10 rounded-lg text-sm font-bold transition-colors"
-                :class="it.status === 'pending'
-                  ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                  : 'bg-green-500 hover:bg-green-600 text-white'"
-                x-text="busy[it.id]
-                  ? 'Đang lưu...'
-                  : (it.status === 'pending' ? 'Bắt đầu làm' : 'Đã lên')"></button>
+                :class="actionClass(it)"
+                x-text="isBusy(it.id) ? 'Đang lưu...' : actionLabel(it)"></button>
       </div>
     </template>
   </div>
@@ -194,34 +182,72 @@
 
 {% block scripts %}
 <script>
+const STATUS_LABEL = Object.freeze({
+  pending: 'Chờ', preparing: 'Đang làm', served: 'Đã lên', cancelled: 'Huỷ',
+});
+const NEXT_STATUS = Object.freeze({ pending: 'preparing', preparing: 'served' });
+const ACTION_LABEL = Object.freeze({ pending: 'Bắt đầu', preparing: 'Đã lên' });
+const ACTION_CLASS = Object.freeze({
+  pending:   'bg-orange-500 hover:bg-orange-600 text-white',
+  preparing: 'bg-green-500 hover:bg-green-600 text-white',
+});
+
 function kitchenApp(initial) {
   return {
-    items: initial,
+    items: [],
     viewMode: 'table',
     filter: 'all',
     refreshing: false,
-    busy: {},
+    busy: new Set(),
     lastUpdate: 'vừa xong',
     soundEnabled: localStorage.getItem('kitchen_sound') === '1',
+    STATUS_LABEL,
     _pollerId: null,
+    _unloadHandler: null,
     _seenIds: new Set(),
+    _lastSig: '',
     _audioCtx: null,
 
     init() {
-      this.lastUpdate = this.formatTime(new Date());
-      // Đánh dấu các món hiện có là "đã thấy" để không kêu cho item cũ khi load page
+      this.items = this.annotate(initial);
+      this._lastSig = this.signature(initial);
       this.items.forEach(it => this._seenIds.add(it.id));
+      this.lastUpdate = this.formatTime(new Date());
       this._pollerId = setInterval(() => this.refresh(), 10000);
+      this._unloadHandler = () => this.cleanup();
+      window.addEventListener('beforeunload', this._unloadHandler);
       this.$nextTick(() => lucide.createIcons());
     },
+
+    cleanup() {
+      if (this._pollerId) { clearInterval(this._pollerId); this._pollerId = null; }
+      if (this._audioCtx) { this._audioCtx.close().catch(() => {}); this._audioCtx = null; }
+    },
+
+    annotate(rawItems) {
+      const now = Date.now();
+      return rawItems.map(it => ({
+        ...it,
+        _age: Math.floor((now - new Date(it.created_at.replace(' ', 'T')).getTime()) / 60000),
+      }));
+    },
+
+    signature(rawItems) {
+      // Guard against no-op renders: only id/status/quantity/note affect display.
+      return rawItems.map(it => `${it.id}:${it.status}:${it.quantity}:${it.note || ''}`).join('|');
+    },
+
+    isBusy(id) { return this.busy.has(id); },
+
+    actionLabel(it) { return ACTION_LABEL[it.status] || ''; },
+    actionClass(it) { return ACTION_CLASS[it.status] || ''; },
 
     toggleSound() {
       this.soundEnabled = !this.soundEnabled;
       localStorage.setItem('kitchen_sound', this.soundEnabled ? '1' : '0');
-      // Khởi tạo AudioContext sau interaction (browser policy)
       if (this.soundEnabled) {
         this.ensureAudio();
-        this.beep(); // beep test xác nhận đã bật
+        this.beep();
       }
       this.$nextTick(() => lucide.createIcons());
     },
@@ -233,7 +259,6 @@ function kitchenApp(initial) {
           this._audioCtx = new Ctx();
         } catch (e) {}
       }
-      // Resume nếu suspended (Chrome autoplay policy)
       if (this._audioCtx && this._audioCtx.state === 'suspended') {
         this._audioCtx.resume();
       }
@@ -242,7 +267,7 @@ function kitchenApp(initial) {
     beep(tones) {
       if (!this.soundEnabled || !this._audioCtx) return;
       const ctx = this._audioCtx;
-      const sequence = tones || [880, 1175]; // A5, D6 (ding ding)
+      const sequence = tones || [880, 1175];
       const now = ctx.currentTime;
       sequence.forEach((freq, i) => {
         const osc = ctx.createOscillator();
@@ -260,8 +285,13 @@ function kitchenApp(initial) {
       });
     },
 
-    countByStatus(s) {
-      return this.items.filter(i => i.status === s).length;
+    get counts() {
+      let pending = 0, preparing = 0;
+      for (const it of this.items) {
+        if (it.status === 'pending') pending++;
+        else if (it.status === 'preparing') preparing++;
+      }
+      return { pending, preparing, total: this.items.length };
     },
 
     get filteredItems() {
@@ -271,37 +301,30 @@ function kitchenApp(initial) {
 
     get itemsByTable() {
       const groups = new Map();
-      this.filteredItems.forEach(it => {
+      for (const it of this.filteredItems) {
         const key = it.table_id || ('to-' + it.order_id);
-        if (!groups.has(key)) {
-          groups.set(key, {
+        let g = groups.get(key);
+        if (!g) {
+          g = {
             tableId: key,
             tableName: it.table_name || 'Mang về',
             orderCode: it.order_code,
             guestCount: it.guest_count,
             items: [],
             oldestAge: 0,
-          });
+          };
+          groups.set(key, g);
         }
-        const g = groups.get(key);
         g.items.push(it);
-        const age = this.itemAge(it);
-        if (age > g.oldestAge) g.oldestAge = age;
-      });
+        if (it._age > g.oldestAge) g.oldestAge = it._age;
+      }
       return Array.from(groups.values()).sort((a, b) => b.oldestAge - a.oldestAge);
-    },
-
-    itemAge(it) {
-      const created = new Date(it.created_at.replace(' ', 'T')).getTime();
-      return Math.floor((Date.now() - created) / 60000);
     },
 
     formatAge(min) {
       if (min < 1) return 'vừa xong';
       if (min < 60) return min + ' phút';
-      const h = Math.floor(min / 60);
-      const m = min % 60;
-      return h + 'g ' + m + 'p';
+      return Math.floor(min / 60) + 'g ' + (min % 60) + 'p';
     },
 
     ageClass(min) {
@@ -321,30 +344,36 @@ function kitchenApp(initial) {
         const resp = await fetch('/kitchen/data');
         const data = await resp.json();
         if (data.success) {
-          // Detect món mới (id chưa từng thấy)
-          const newIds = data.items
-            .filter(it => !this._seenIds.has(it.id))
-            .map(it => it.id);
-          this.items = data.items;
+          const sig = this.signature(data.items);
           this.lastUpdate = this.formatTime(new Date());
-          if (newIds.length > 0) {
-            newIds.forEach(id => this._seenIds.add(id));
-            this.beep();
+          if (sig === this._lastSig) {
+            // Vẫn refresh _age (đếm phút trôi) nhưng không đụng items reactive
+            this.items.forEach(it => {
+              it._age = Math.floor((Date.now() - new Date(it.created_at.replace(' ', 'T')).getTime()) / 60000);
+            });
+            return;
           }
+          this._lastSig = sig;
+          const newIds = data.items.filter(it => !this._seenIds.has(it.id)).map(it => it.id);
+          this.items = this.annotate(data.items);
+          // Bound _seenIds: chỉ giữ id còn active để Set không phình lên qua nhiều ca
+          this._seenIds = new Set(data.items.map(it => it.id));
+          if (newIds.length > 0) this.beep();
         }
       } catch (e) {
         // silent fail; will retry next interval
       } finally {
         this.refreshing = false;
-        this.$nextTick(() => lucide.createIcons());
       }
     },
 
     async advance(it) {
-      const next = it.status === 'pending' ? 'preparing' : 'served';
-      this.busy[it.id] = true;
+      const next = NEXT_STATUS[it.status];
+      if (!next || this.busy.has(it.id)) return;
+      this.busy.add(it.id);
+      this.busy = new Set(this.busy); // trigger Alpine reactivity
       try {
-        const resp = await fetch('/kitchen/items/' + it.id + '/status', {
+        const resp = await fetch(`/kitchen/items/${it.id}/status`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: next }),
@@ -356,13 +385,15 @@ function kitchenApp(initial) {
           } else {
             it.status = next;
           }
+          this._lastSig = this.signature(this.items);
         } else {
           alert(data.error || 'Có lỗi xảy ra');
         }
       } catch (e) {
         alert('Lỗi kết nối, thử lại');
       } finally {
-        delete this.busy[it.id];
+        this.busy.delete(it.id);
+        this.busy = new Set(this.busy);
       }
     },
   };

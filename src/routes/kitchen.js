@@ -34,39 +34,35 @@ router.get('/data', (req, res) => {
   res.json({ success: true, items, ts: Date.now() });
 });
 
+// pending → preparing → served (the only legal forward transitions from KDS)
+const PREVIOUS_STATUS = { preparing: 'pending', served: 'preparing' };
+
 // POST /kitchen/items/:id/status — đổi trạng thái món
 // body: { status: 'preparing' | 'served' }
 router.post('/items/:id/status', (req, res) => {
   const itemId = parseInt(req.params.id);
   const newStatus = req.body.status;
+  const expectedPrev = PREVIOUS_STATUS[newStatus];
 
-  const allowed = ['preparing', 'served'];
-  if (!allowed.includes(newStatus)) {
+  if (!expectedPrev) {
     return res.status(400).json({ success: false, error: 'Trạng thái không hợp lệ' });
   }
 
-  const item = q.get(`SELECT id, status FROM order_items WHERE id = ?`, itemId);
-  if (!item) {
-    return res.status(404).json({ success: false, error: 'Không tìm thấy món' });
-  }
+  // Atomic compare-and-swap: chỉ update nếu status hiện tại đúng expected.
+  // Tránh race khi 2 cook cùng bấm — chỉ một request thắng.
+  const result = q.run(
+    `UPDATE order_items
+       SET status = ?, updated_at = datetime('now','localtime')
+     WHERE id = ? AND status = ?`,
+    newStatus, itemId, expectedPrev
+  );
 
-  // Validate transition: pending → preparing → served
-  const validTransitions = {
-    pending:   ['preparing'],
-    preparing: ['served'],
-  };
-  const allowedNext = validTransitions[item.status] || [];
-  if (!allowedNext.includes(newStatus)) {
-    return res.status(400).json({
+  if (!result.changes) {
+    return res.status(409).json({
       success: false,
-      error: `Không thể chuyển từ "${item.status}" sang "${newStatus}"`,
+      error: 'Món đã được cập nhật bởi người khác, vui lòng làm mới.',
     });
   }
-
-  q.run(
-    `UPDATE order_items SET status = ?, updated_at = datetime('now','localtime') WHERE id = ?`,
-    newStatus, itemId
-  );
 
   return res.json({ success: true, status: newStatus });
 });
