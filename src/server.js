@@ -90,6 +90,7 @@ app.use('/tables',  require('./routes/tables'));
 app.use('/takeaway',require('./routes/takeaway'));
 app.use('/menu',    require('./routes/menu'));
 app.use('/orders',  require('./routes/orders'));
+app.use('/kitchen', require('./routes/kitchen'));
 app.use('/payments',require('./routes/payments'));
 app.use('/finance', require('./routes/finance'));
 app.use('/reports', require('./routes/reports'));
