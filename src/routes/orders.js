@@ -129,9 +129,11 @@ router.post('/:id/add-items', requireAuth, (req, res) => {
       );
     }
 
+    // Dine-in: about về sơ đồ bàn để tiếp tục phục vụ bàn khác.
+    // Takeaway: ở lại trang takeaway để chỉnh tiếp.
     const redirectUrl = order.order_type === 'takeaway'
       ? '/takeaway/' + order.id
-      : '/tables/' + order.table_id + '/order';
+      : '/tables';
     return res.json({ success: true, redirect: redirectUrl });
   } catch (err) {
     return res.status(400).json({ success: false, error: err.message });

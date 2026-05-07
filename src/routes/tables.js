@@ -46,12 +46,15 @@ router.get('/', (req, res) => {
   // 4. Với mỗi bàn, lấy active order (nếu có)
   // _table_card.html expects: entry = { table, active_order }
   const tableEntries = tables.map(table => {
+    // Chỉ coi là "active" nếu order có ít nhất 1 món chưa hủy
+    // (order rỗng vẫn ở DB nhưng bàn nhìn như "Trống").
     const active_order = q.get(
       `SELECT o.*, COUNT(oi.id) as item_count
        FROM orders o
        LEFT JOIN order_items oi ON oi.order_id = o.id AND oi.status != 'cancelled'
        WHERE o.table_id = ? AND o.status IN ('open','serving')
        GROUP BY o.id
+       HAVING COUNT(oi.id) > 0
        LIMIT 1`,
       table.id
     ) || null;
@@ -128,8 +131,35 @@ router.post('/:id/open', (req, res) => {
     res.flash('error', 'Bàn không tồn tại.');
     return res.redirect('/tables');
   }
+
+  // Reuse order rỗng (mở trước đó nhưng chưa gọi món) thay vì tạo trùng.
+  const existingEmpty = q.get(
+    `SELECT o.id FROM orders o
+     LEFT JOIN order_items oi ON oi.order_id = o.id AND oi.status != 'cancelled'
+     WHERE o.table_id = ? AND o.status IN ('open','serving')
+     GROUP BY o.id
+     HAVING COUNT(oi.id) = 0
+     LIMIT 1`,
+    tableId
+  );
+
+  if (existingEmpty) {
+    q.run(
+      `UPDATE orders SET guest_count = ?, updated_at = datetime('now','localtime') WHERE id = ?`,
+      guestCount, existingEmpty.id
+    );
+    // Đảm bảo table.status nhất quán (có thể đã bị set khác)
+    q.run(
+      `UPDATE tables SET status = 'occupied', updated_at = datetime('now','localtime') WHERE id = ?`,
+      tableId
+    );
+    return res.redirect(`/tables/${tableId}/order`);
+  }
+
+  // Khi không có order rỗng tái dùng, chỉ cho mở bàn nếu DB status là available
+  // (chặn tạo 2 order song song trên cùng bàn đang phục vụ).
   if (table.status !== 'available') {
-    res.flash('error', `Bàn ${table.name} hiện không ở trạng thái trống.`);
+    res.flash('error', `Bàn ${table.name} đang phục vụ, không thể mở mới.`);
     return res.redirect('/tables');
   }
 
