@@ -12,13 +12,13 @@
     {% for order in orders %}
     {
       id: {{ order.id }},
-      order_code: {{ order.order_code | tojson }},
-      table_name: {{ (order.table_name or '') | tojson }},
-      order_type: {{ (order.order_type or 'dine_in') | tojson }},
+      order_code: {{ order.order_code | tojson | safe }},
+      table_name: {{ (order.table_name or '') | tojson | safe }},
+      order_type: {{ (order.order_type or 'dine_in') | tojson | safe }},
       final_amount: {{ order.final_amount or 0 }},
       item_count: {{ order.item_count or 0 }},
-      created_at: {{ (order.created_at or '') | tojson }},
-      customer_address: {{ (order.customer_address or '') | tojson }},
+      created_at: {{ (order.created_at or '') | tojson | safe }},
+      customer_address: {{ (order.customer_address or '') | tojson | safe }},
     },
     {% endfor %}
   ];
