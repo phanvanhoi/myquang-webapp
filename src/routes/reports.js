@@ -12,12 +12,12 @@ function getDashboardData() {
     FROM payments p
     JOIN orders o ON o.id = p.order_id
     WHERE o.status = 'completed'
-      AND date(p.paid_at,'localtime') = date('now','localtime')
+      AND date(p.paid_at) = date('now','localtime')
   `).total;
 
   const todayOrders = q.get(`
     SELECT COUNT(*) as cnt FROM orders
-    WHERE date(updated_at,'localtime') = date('now','localtime') AND status='completed'
+    WHERE date(updated_at) = date('now','localtime') AND status='completed'
   `).cnt;
 
   const occupiedTables = q.get(
@@ -30,7 +30,7 @@ function getDashboardData() {
 
   const todayExpense = q.get(`
     SELECT COALESCE(SUM(amount),0) as total FROM expenses
-    WHERE date(occurred_at,'localtime') = date('now','localtime')
+    WHERE date(occurred_at) = date('now','localtime')
   `).total;
 
   const topItems = q.all(`
@@ -38,7 +38,7 @@ function getDashboardData() {
     FROM order_items oi
     JOIN menu_items mi ON mi.id = oi.item_id
     JOIN orders o ON o.id = oi.order_id
-    WHERE date(o.updated_at,'localtime') = date('now','localtime')
+    WHERE date(o.updated_at) = date('now','localtime')
       AND o.status = 'completed'
       AND oi.status != 'cancelled'
     GROUP BY mi.id
@@ -60,7 +60,7 @@ function getDashboardData() {
       FROM payments p
       JOIN orders o ON o.id = p.order_id
       WHERE o.status = 'completed'
-        AND date(p.paid_at,'localtime') = date('now','localtime','-${i} days')
+        AND date(p.paid_at) = date('now','localtime','-${i} days')
     `);
     last7.push({ day: i, total: row.total });
   }
@@ -135,7 +135,7 @@ router.get('/', requireAuth, (req, res) => {
     FROM payments p
     JOIN orders o ON o.id = p.order_id
     WHERE o.status = 'completed'
-      AND strftime('%Y-%m', p.paid_at,'localtime') = strftime('%Y-%m','now','localtime')
+      AND strftime('%Y-%m', p.paid_at) = strftime('%Y-%m','now','localtime')
   `).total;
 
   const monthExpense = q.get(`
@@ -160,7 +160,7 @@ router.get('/revenue', requireAuth, (req, res) => {
   let rows;
   if (period === 'month') {
     rows = q.all(`
-      SELECT date(p.paid_at,'localtime') as label,
+      SELECT date(p.paid_at) as label,
              COALESCE(SUM(p.amount),0)   as total
       FROM payments p
       JOIN orders o ON o.id = p.order_id
@@ -170,7 +170,7 @@ router.get('/revenue', requireAuth, (req, res) => {
     `);
   } else if (period === 'week') {
     rows = q.all(`
-      SELECT date(p.paid_at,'localtime') as label,
+      SELECT date(p.paid_at) as label,
              COALESCE(SUM(p.amount),0)   as total
       FROM payments p
       JOIN orders o ON o.id = p.order_id
@@ -180,12 +180,12 @@ router.get('/revenue', requireAuth, (req, res) => {
     `);
   } else {
     rows = q.all(`
-      SELECT strftime('%H:00', p.paid_at,'localtime') as label,
+      SELECT strftime('%H:00', p.paid_at) as label,
              COALESCE(SUM(p.amount),0)                as total
       FROM payments p
       JOIN orders o ON o.id = p.order_id
       WHERE o.status = 'completed'
-        AND date(p.paid_at,'localtime') = ?
+        AND date(p.paid_at) = ?
       GROUP BY label ORDER BY label
     `, date);
   }
@@ -220,7 +220,7 @@ router.get('/items', requireAuth, (req, res) => {
     JOIN orders o            ON o.id  = oi.order_id
     WHERE o.status  = 'completed'
       AND oi.status != 'cancelled'
-      AND date(o.updated_at,'localtime') BETWEEN ? AND ?
+      AND date(o.updated_at) BETWEEN ? AND ?
     GROUP BY mi.id
     ORDER BY qty DESC
     LIMIT 20
@@ -247,7 +247,7 @@ router.get('/finance', requireAuth, (req, res) => {
     FROM payments p
     JOIN orders o ON o.id = p.order_id
     WHERE o.status = 'completed'
-      AND strftime('%Y-%m', p.paid_at,'localtime') = ?
+      AND strftime('%Y-%m', p.paid_at) = ?
   `, month).total;
 
   const expByCategory = q.all(`
