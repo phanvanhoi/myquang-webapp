@@ -13,6 +13,7 @@ router.get('/', requireAuth, (req, res) => {
      LEFT JOIN order_items oi ON oi.order_id = o.id
      WHERE o.status IN ('open','serving')
      GROUP BY o.id
+     HAVING item_count > 0
      ORDER BY o.created_at DESC`
   );
   res.render('orders/index.html', { orders });
