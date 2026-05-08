@@ -45,6 +45,19 @@
 >
   <form method="post" action="/payments/{{ order.id }}/confirm">
 
+    {# Single source for amounts — tránh duplicate hidden trong từng x-show block
+       (x-show chỉ ẩn CSS, input vẫn submit và bị parse sai theo thứ tự DOM). #}
+    <input type="hidden" name="discount_amount" value="0" />
+    <input type="hidden" name="discount_reason" value="" />
+    <input type="hidden" name="cash_amount"
+           :value="payMode === 'cash'     ? finalAmount
+                 : payMode === 'transfer' ? 0
+                 :                          Math.max(0, finalAmount - transferAmount)" />
+    <input type="hidden" name="transfer_amount"
+           :value="payMode === 'cash'     ? 0
+                 : payMode === 'transfer' ? finalAmount
+                 :                          transferAmount" />
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
       <!-- ═══════════════════════════════════════ -->
@@ -79,10 +92,6 @@
 
         <!-- Footer tính tiền -->
         <div class="border-t border-gray-100 px-5 py-4 bg-gray-50 space-y-3">
-
-          {# Subtotal hidden — chỉ hiện 1 dòng tổng cuối #}
-          <input type="hidden" name="discount_amount" value="0" />
-          <input type="hidden" name="discount_reason" value="" />
 
           <!-- Tổng cần thanh toán -->
           <div class="flex justify-between items-center">
@@ -153,9 +162,6 @@
 
           <!-- ── TIỀN MẶT ── -->
           <div x-show="payMode === 'cash'" class="space-y-4">
-            <!-- Hidden inputs -->
-            <input type="hidden" name="transfer_amount" value="0" />
-
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1.5">Tiền khách đưa</label>
               <input
@@ -189,16 +195,10 @@
                 x-text="formatVND(change)"
               >0đ</span>
             </div>
-
-            <!-- Actual cash_amount sent = finalAmount (not cashGiven) -->
-            <input type="hidden" name="cash_amount" :value="finalAmount" />
           </div>
 
           <!-- ── CHUYỂN KHOẢN ── -->
           <div x-show="payMode === 'transfer'" class="space-y-4">
-            <input type="hidden" name="cash_amount" value="0" />
-            <input type="hidden" name="transfer_amount" :value="finalAmount" />
-
             <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2 text-sm">
               {% if settings.bank_name %}
               <div class="flex justify-between">
@@ -286,9 +286,6 @@
               <span class="text-gray-600 font-medium">Tiền thừa trả lại</span>
               <span class="text-xl font-bold text-green-600" x-text="formatVND(change)">0đ</span>
             </div>
-
-            <input type="hidden" name="cash_amount" :value="Math.max(0, finalAmount - transferAmount)" />
-            <input type="hidden" name="transfer_amount" :value="transferAmount" />
           </div>
 
         </div>
