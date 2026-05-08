@@ -16,6 +16,9 @@ const db = new Database(DB_PATH);
 db.exec('PRAGMA foreign_keys = ON');
 db.exec('PRAGMA journal_mode = WAL');
 db.exec('PRAGMA synchronous = NORMAL');
+// Cho phép writer chờ đến 5s khi DB đang busy (vd. khi chạy migrate song song app)
+// thay vì fail ngay với SQLITE_BUSY.
+db.exec('PRAGMA busy_timeout = 5000');
 
 // ── Create all tables ──
 db.exec(`
