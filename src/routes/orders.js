@@ -88,6 +88,12 @@ router.post('/:id/add-items', requireAuth, (req, res) => {
   if (!order) {
     return res.status(404).json({ success: false, error: 'Không tìm thấy order' });
   }
+  if (!['open', 'serving'].includes(order.status)) {
+    return res.status(400).json({
+      success: false,
+      error: `Không thể thêm món: order đã ở trạng thái "${order.status}".`,
+    });
+  }
 
   const { items } = req.body;
   if (!Array.isArray(items) || items.length === 0) {
@@ -142,6 +148,26 @@ router.post('/:id/add-items', requireAuth, (req, res) => {
 // POST /:id/items/:itemId/cancel — Huỷ 1 món
 router.post('/:id/items/:itemId/cancel', requireAdminOrCashier, (req, res) => {
   const { id, itemId } = req.params;
+
+  // Chặn huỷ món trên order đã thanh toán/đã huỷ — payments giữ nguyên trong khi
+  // recalcOrder giảm final_amount, gây lệch doanh thu.
+  const order = q.get(`SELECT status FROM orders WHERE id = ?`, id);
+  if (!order) {
+    if (req.is('application/json')) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy order' });
+    }
+    res.flash('error', 'Không tìm thấy order');
+    return res.redirect('/orders');
+  }
+  if (!['open', 'serving'].includes(order.status)) {
+    const msg = `Không thể huỷ món: order đã ở trạng thái "${order.status}".`;
+    if (req.is('application/json')) {
+      return res.status(400).json({ success: false, error: msg });
+    }
+    res.flash('error', msg);
+    return res.redirect('/orders/' + id);
+  }
+
   q.run(
     `UPDATE order_items
      SET status = 'cancelled', updated_at = datetime('now','localtime')
@@ -164,6 +190,16 @@ router.post('/:id/items/:itemId/qty', requireAdminOrCashier, (req, res) => {
   const quantity = parseInt(req.body.quantity);
   if (!quantity || quantity < 1) {
     return res.status(400).json({ success: false, error: 'Số lượng không hợp lệ' });
+  }
+  const order = q.get(`SELECT status FROM orders WHERE id = ?`, id);
+  if (!order) {
+    return res.status(404).json({ success: false, error: 'Không tìm thấy order' });
+  }
+  if (!['open', 'serving'].includes(order.status)) {
+    return res.status(400).json({
+      success: false,
+      error: `Không thể sửa số lượng: order đã ở trạng thái "${order.status}".`,
+    });
   }
   const item = q.get(
     `SELECT * FROM order_items WHERE id = ? AND order_id = ?`,
