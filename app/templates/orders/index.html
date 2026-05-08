@@ -34,6 +34,7 @@
       </thead>
       <tbody class="divide-y divide-gray-50">
         {% for order in orders %}
+        {% set pos_url %}{% if order.order_type == 'takeaway' %}/takeaway/{{ order.id }}{% else %}/tables/{{ order.table_id }}/order{% endif %}{% endset %}
         <tr class="hover:bg-amber-50/40 transition-colors">
           <td class="px-5 py-3 font-mono text-xs text-gray-500">{{ order.order_code }}</td>
           <td class="px-5 py-3 font-semibold text-gray-800">
@@ -65,13 +66,9 @@
           </td>
           <td class="px-5 py-3">
             <div class="flex items-center justify-center gap-2">
-              <a href="/orders/{{ order.id }}/add-items"
+              <a href="{{ pos_url }}"
                  class="h-8 px-3 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-medium transition-colors flex items-center gap-1">
-                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Gọi món
-              </a>
-              <a href="/orders/{{ order.id }}"
-                 class="h-8 px-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 text-xs font-medium transition-colors flex items-center gap-1">
-                <i data-lucide="eye" class="w-3.5 h-3.5"></i> Xem
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Mở order
               </a>
               <a href="/payments/{{ order.id }}"
                  class="h-8 px-3 rounded-lg border border-amber-300 hover:bg-amber-50 text-amber-700 text-xs font-medium transition-colors flex items-center gap-1">
@@ -88,6 +85,7 @@
   <!-- Mobile cards -->
   <div class="md:hidden space-y-3">
     {% for order in orders %}
+    {% set pos_url %}{% if order.order_type == 'takeaway' %}/takeaway/{{ order.id }}{% else %}/tables/{{ order.table_id }}/order{% endif %}{% endset %}
     <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
       <div class="flex items-start justify-between mb-3">
         <div>
@@ -121,13 +119,9 @@
       </div>
 
       <div class="flex gap-2">
-        <a href="/orders/{{ order.id }}/add-items"
+        <a href="{{ pos_url }}"
            class="flex-1 h-10 flex items-center justify-center gap-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-medium transition-colors">
-          <i data-lucide="plus" class="w-4 h-4"></i> Gọi món
-        </a>
-        <a href="/orders/{{ order.id }}"
-           class="h-10 px-4 flex items-center rounded-lg border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition-colors">
-          <i data-lucide="eye" class="w-4 h-4"></i>
+          <i data-lucide="plus" class="w-4 h-4"></i> Mở order
         </a>
         <a href="/payments/{{ order.id }}"
            class="h-10 px-4 flex items-center rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors">

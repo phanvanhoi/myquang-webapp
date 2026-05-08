@@ -3,6 +3,15 @@ const router = express.Router();
 const { q } = require('../db');
 const { requireAuth, requireAdminOrCashier } = require('../middleware/auth');
 
+// Trang chi tiết order tập trung ở /tables/:tableId/order (POS) cho dine-in
+// và /takeaway/:id cho mang về. /orders chỉ giữ list view + redirect.
+function posUrlFor(order) {
+  if (!order) return '/orders';
+  return order.order_type === 'takeaway'
+    ? `/takeaway/${order.id}`
+    : `/tables/${order.table_id}/order`;
+}
+
 // GET / — Danh sách orders đang mở
 router.get('/', requireAuth, (req, res) => {
   const orders = q.all(
@@ -19,66 +28,24 @@ router.get('/', requireAuth, (req, res) => {
   res.render('orders/index.html', { orders });
 });
 
-// GET /:id — Chi tiết order
+// GET /:id — Trỏ về POS hợp với loại order (giữ route cho backward compat).
 router.get('/:id', requireAuth, (req, res) => {
-  const { id } = req.params;
-  const order = q.get(
-    `SELECT o.*, t.name as table_name, t.code as table_code
-     FROM orders o
-     JOIN tables t ON t.id = o.table_id
-     WHERE o.id = ?`,
-    id
-  );
+  const order = q.get(`SELECT id, table_id, order_type FROM orders WHERE id = ?`, req.params.id);
   if (!order) {
     res.flash('error', 'Không tìm thấy order');
     return res.redirect('/orders');
   }
-  const table = q.get(`SELECT * FROM tables WHERE id = ?`, order.table_id);
-  const items = q.all(
-    `SELECT oi.*, mi.name as item_name
-     FROM order_items oi
-     JOIN menu_items mi ON mi.id = oi.item_id
-     WHERE oi.order_id = ?
-     ORDER BY oi.created_at`,
-    id
-  );
-  const pending_count = items.filter(i => i.status === 'pending').length;
-  res.render('orders/detail.html', { order, table, items, pending_count });
+  res.redirect(posUrlFor(order));
 });
 
-// GET /:id/add-items — Màn hình gọi món
+// GET /:id/add-items — POS đã có menu inline, chỉ cần đưa user vào đó.
 router.get('/:id/add-items', requireAuth, (req, res) => {
-  const { id } = req.params;
-  const order = q.get(
-    `SELECT o.*, t.name as table_name, t.code as table_code
-     FROM orders o
-     JOIN tables t ON t.id = o.table_id
-     WHERE o.id = ?`,
-    id
-  );
+  const order = q.get(`SELECT id, table_id, order_type FROM orders WHERE id = ?`, req.params.id);
   if (!order) {
     res.flash('error', 'Không tìm thấy order');
     return res.redirect('/orders');
   }
-  const categories = q.all(
-    `SELECT * FROM menu_categories WHERE is_active = 1 ORDER BY sort_order, name`
-  );
-  const items = q.all(
-    `SELECT mi.*, mc.name as category_name
-     FROM menu_items mi
-     JOIN menu_categories mc ON mc.id = mi.category_id
-     WHERE mi.is_active = 1
-     ORDER BY mc.sort_order, mi.sort_order, mi.name`
-  );
-  const currentItems = q.all(
-    `SELECT oi.*, mi.name as item_name
-     FROM order_items oi
-     JOIN menu_items mi ON mi.id = oi.item_id
-     WHERE oi.order_id = ? AND oi.status != 'cancelled'
-     ORDER BY oi.created_at`,
-    id
-  );
-  res.render('orders/add_items.html', { order, categories, items, currentItems });
+  res.redirect(posUrlFor(order));
 });
 
 // POST /:id/add-items — Thêm món (JSON body)
@@ -151,7 +118,10 @@ router.post('/:id/items/:itemId/cancel', requireAdminOrCashier, (req, res) => {
 
   // Chặn huỷ món trên order đã thanh toán/đã huỷ — payments giữ nguyên trong khi
   // recalcOrder giảm final_amount, gây lệch doanh thu.
-  const order = q.get(`SELECT status FROM orders WHERE id = ?`, id);
+  const order = q.get(
+    `SELECT id, status, table_id, order_type FROM orders WHERE id = ?`,
+    id
+  );
   if (!order) {
     if (req.is('application/json')) {
       return res.status(404).json({ success: false, error: 'Không tìm thấy order' });
@@ -165,7 +135,7 @@ router.post('/:id/items/:itemId/cancel', requireAdminOrCashier, (req, res) => {
       return res.status(400).json({ success: false, error: msg });
     }
     res.flash('error', msg);
-    return res.redirect('/orders/' + id);
+    return res.redirect(posUrlFor(order));
   }
 
   q.run(
@@ -180,7 +150,7 @@ router.post('/:id/items/:itemId/cancel', requireAdminOrCashier, (req, res) => {
     return res.json({ success: true });
   }
   res.flash('success', 'Đã huỷ món');
-  const back = req.headers.referer || '/orders/' + id;
+  const back = req.headers.referer || posUrlFor(order);
   res.redirect(back);
 });
 
@@ -225,6 +195,14 @@ router.post('/:id/items/:itemId/qty', requireAdminOrCashier, (req, res) => {
 // POST /:id/send-to-kitchen — Gửi bếp (pending → preparing)
 router.post('/:id/send-to-kitchen', requireAuth, (req, res) => {
   const { id } = req.params;
+  const order = q.get(
+    `SELECT id, table_id, order_type FROM orders WHERE id = ?`,
+    id
+  );
+  if (!order) {
+    res.flash('error', 'Không tìm thấy order');
+    return res.redirect('/orders');
+  }
   q.run(
     `UPDATE order_items
      SET status = 'preparing', updated_at = datetime('now','localtime')
@@ -232,7 +210,7 @@ router.post('/:id/send-to-kitchen', requireAuth, (req, res) => {
     id
   );
   res.flash('success', 'Đã gửi món lên bếp');
-  res.redirect('/orders/' + id);
+  res.redirect(posUrlFor(order));
 });
 
 // POST /:id/cancel — Huỷ toàn bộ order
@@ -247,11 +225,11 @@ router.post('/:id/cancel', requireAdminOrCashier, (req, res) => {
   // mồ côi và làm sai doanh thu. Nếu cần hoàn tiền phải xử lý nghiệp vụ riêng.
   if (order.status === 'completed') {
     res.flash('error', 'Không thể huỷ hóa đơn đã thanh toán.');
-    return res.redirect('/orders/' + id);
+    return res.redirect(posUrlFor(order));
   }
   if (order.status === 'cancelled') {
     res.flash('error', 'Hóa đơn đã ở trạng thái huỷ.');
-    return res.redirect('/orders/' + id);
+    return res.redirect(posUrlFor(order));
   }
   q.run(
     `UPDATE orders SET status = 'cancelled', updated_at = datetime('now','localtime') WHERE id = ?`,
