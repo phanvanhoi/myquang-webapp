@@ -86,17 +86,15 @@
   const _posServerItemCount = {{ items | length }};
   const _posExistingTotal   = {{ order.total_amount or 0 }};
   // Items có thể tách (chưa cancelled) — chỉ id+name+qty+subtotal cho modal
-  const _posSplittable = [
-    {% for item in items %}{% if item.status != 'cancelled' %}
-    {
-      id: {{ item.id }},
-      name: {{ (item.menu_item.name if item.menu_item else item.item_name) | tojson }},
-      qty: {{ item.quantity }},
-      subtotal: {{ item.subtotal }},
-      status: {{ item.status | tojson }},
-    },
-    {% endif %}{% endfor %}
-  ];
+  const _posSplittable = {{ items | tojson | safe }}
+    .filter(it => it.status !== 'cancelled')
+    .map(it => ({
+      id: it.id,
+      name: it.item_name,
+      qty: it.quantity,
+      subtotal: it.subtotal,
+      status: it.status,
+    }));
 </script>
 
 {# ══════════════════════════════════════════════════════════
