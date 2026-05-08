@@ -21,7 +21,7 @@
 
     <div class="text-sm text-gray-600">
       <span class="font-semibold text-gray-800" x-text="itemsByTable.length"></span> bàn ·
-      <span class="font-semibold text-gray-800" x-text="items.length"></span> món đang chờ
+      <span class="font-semibold text-gray-800" x-text="unservedTotal"></span> món đang chờ
     </div>
 
     <div class="flex items-center gap-2 text-xs text-gray-400">
@@ -49,7 +49,7 @@
   </div>
 
   {# ── Empty state ── #}
-  <template x-if="items.length === 0">
+  <template x-if="itemsByTable.length === 0">
     <div class="bg-white rounded-2xl border border-amber-100 py-20 text-center">
       <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-50 mb-3">
         <i data-lucide="check-check" class="w-8 h-8 text-amber-400"></i>
@@ -59,8 +59,8 @@
     </div>
   </template>
 
-  {# ── Cards: 1 bàn = 1 card, 1 nút "Đã lên" duy nhất ── #}
-  <div x-show="items.length > 0"
+  {# ── Cards: 1 bàn = 1 card; bàn nào tick hết món thì biến mất ── #}
+  <div x-show="itemsByTable.length > 0"
        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     <template x-for="grp in itemsByTable" :key="grp.tableId">
       <div class="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden flex flex-col">
@@ -83,35 +83,44 @@
           </div>
         </div>
 
-        {# Items list — mỗi món có nút tick riêng #}
+        {# Items list — mỗi món có nút tick tròn trắng, click → xanh, ở lại card #}
         <div class="divide-y divide-gray-50">
           <template x-for="it in grp.items" :key="it.id">
-            <div class="px-4 py-3 flex items-center gap-3">
+            <div class="px-4 py-3 flex items-center gap-3 transition-colors"
+                 :class="it._served ? 'bg-green-50' : ''">
               <div class="flex-1 min-w-0">
-                <div class="font-semibold text-gray-800 truncate" x-text="it.item_name + ' ×' + it.quantity"></div>
-                <div x-show="it.note" class="text-xs text-amber-600 italic truncate" x-text="it.note"></div>
+                <div class="font-semibold truncate"
+                     :class="it._served ? 'line-through text-gray-400' : 'text-gray-800'"
+                     x-text="it.item_name + ' ×' + it.quantity"></div>
+                <div x-show="it.note"
+                     class="text-xs italic truncate"
+                     :class="it._served ? 'text-gray-400 line-through' : 'text-amber-600'"
+                     x-text="it.note"></div>
               </div>
               <button @click="serveItem(it)"
-                      :disabled="isItemBusy(it.id)"
-                      :title="'Đánh dấu ' + it.item_name + ' đã lên'"
-                      class="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-white transition-colors
-                             bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                      :disabled="isItemBusy(it.id) || it._served"
+                      :title="it._served ? 'Đã lên' : ('Đánh dấu ' + it.item_name + ' đã lên')"
+                      :class="it._served
+                        ? 'bg-green-500 border-green-500 text-white cursor-default'
+                        : 'bg-white border-gray-300 text-gray-300 hover:border-green-500 hover:text-green-500'"
+                      class="shrink-0 w-9 h-9 rounded-full border-2 flex items-center justify-center transition-colors">
                 <i x-show="!isItemBusy(it.id)" data-lucide="check" class="w-5 h-5"></i>
-                <span x-show="isItemBusy(it.id)" class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <span x-show="isItemBusy(it.id)"
+                      class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
               </button>
             </div>
           </template>
         </div>
 
-        {# Tất cả: serve whole table — vẫn giữ cho thao tác nhanh khi cả bàn lên cùng lúc #}
+        {# Action phụ: serve toàn bộ món còn lại của bàn — số trong ngoặc là số chưa tick #}
         <div class="px-4 py-3 border-t border-gray-50 mt-auto">
           <button @click="serveTable(grp)"
-                  :disabled="isTableBusy(grp.tableId)"
+                  :disabled="isTableBusy(grp.tableId) || grp.unservedCount === 0"
                   class="w-full h-10 rounded-lg text-sm font-semibold transition-colors
                          border-2 border-green-500 text-green-700 hover:bg-green-50
-                         disabled:opacity-50 disabled:cursor-not-allowed">
+                         disabled:opacity-40 disabled:cursor-not-allowed">
             <span x-show="!isTableBusy(grp.tableId)">
-              Đã lên cả bàn (<span x-text="grp.items.length"></span>)
+              Đã lên cả bàn (<span x-text="grp.unservedCount"></span>)
             </span>
             <span x-show="isTableBusy(grp.tableId)">Đang lưu...</span>
           </button>
@@ -171,6 +180,10 @@ function kitchenApp(initial) {
     isTableBusy(tableId) { return this.busyTables.has(tableId); },
     isItemBusy(id) { return this.busyItems.has(id); },
 
+    get unservedTotal() {
+      return this.items.reduce((n, it) => n + (it._served ? 0 : 1), 0);
+    },
+
     toggleSound() {
       this.soundEnabled = !this.soundEnabled;
       localStorage.setItem('kitchen_sound', this.soundEnabled ? '1' : '0');
@@ -227,13 +240,20 @@ function kitchenApp(initial) {
             guestCount: it.guest_count,
             items: [],
             oldestAge: 0,
+            unservedCount: 0,
           };
           groups.set(key, g);
         }
         g.items.push(it);
-        if (it._age > g.oldestAge) g.oldestAge = it._age;
+        if (!it._served) {
+          g.unservedCount++;
+          if (it._age > g.oldestAge) g.oldestAge = it._age;
+        }
       }
-      return Array.from(groups.values()).sort((a, b) => b.oldestAge - a.oldestAge);
+      // Bàn đã tick hết món → biến mất khỏi KDS.
+      return Array.from(groups.values())
+        .filter(g => g.unservedCount > 0)
+        .sort((a, b) => b.oldestAge - a.oldestAge);
     },
 
     formatAge(min) {
@@ -269,8 +289,21 @@ function kitchenApp(initial) {
           }
           this._lastSig = sig;
           const newIds = data.items.filter(it => !this._seenIds.has(it.id)).map(it => it.id);
-          this.items = this.annotate(data.items);
-          this._seenIds = new Set(data.items.map(it => it.id));
+
+          // Merge: server trả pending/preparing thôi. Giữ _served của local (cook đã tick rồi)
+          // để card không "xóa xanh" giữa chừng.
+          const fresh = this.annotate(data.items);
+          const freshIds = new Set(fresh.map(it => it.id));
+          const localById = new Map(this.items.map(it => [it.id, it]));
+          const merged = fresh.map(f => {
+            const local = localById.get(f.id);
+            return local && local._served ? { ...f, _served: true } : f;
+          });
+          for (const local of this.items) {
+            if (local._served && !freshIds.has(local.id)) merged.push(local);
+          }
+          this.items = merged;
+          this._seenIds = new Set(this.items.map(it => it.id));
           if (newIds.length > 0) this.beep();
           // Lucide icons trong row mới (data-lucide="check") cần render lại sau Alpine re-render.
           this.$nextTick(() => lucide.createIcons());
@@ -282,6 +315,8 @@ function kitchenApp(initial) {
       }
     },
 
+    // Gọi API mark served — KHÔNG động vào this.items. Caller tự set it._served
+    // để giữ visual "trắng → xanh, ở lại card".
     async _serveIds(ids) {
       const resp = await fetch('/kitchen/items/bulk-served', {
         method: 'POST',
@@ -292,17 +327,15 @@ function kitchenApp(initial) {
       if (!data.success) {
         throw new Error(data.error || 'Có lỗi xảy ra');
       }
-      const idSet = new Set(ids);
-      this.items = this.items.filter(x => !idSet.has(x.id));
-      this._lastSig = this.signature(this.items);
     },
 
     async serveItem(it) {
-      if (this.busyItems.has(it.id)) return;
+      if (this.busyItems.has(it.id) || it._served) return;
       this.busyItems.add(it.id);
       this.busyItems = new Set(this.busyItems);
       try {
         await this._serveIds([it.id]);
+        it._served = true;
       } catch (e) {
         alert(e.message || 'Lỗi kết nối, thử lại');
       } finally {
@@ -313,12 +346,14 @@ function kitchenApp(initial) {
 
     async serveTable(grp) {
       if (this.busyTables.has(grp.tableId)) return;
-      const ids = grp.items.map(it => it.id);
+      const unserved = grp.items.filter(it => !it._served);
+      const ids = unserved.map(it => it.id);
       if (!ids.length) return;
       this.busyTables.add(grp.tableId);
       this.busyTables = new Set(this.busyTables);
       try {
         await this._serveIds(ids);
+        unserved.forEach(it => { it._served = true; });
       } catch (e) {
         alert(e.message || 'Lỗi kết nối, thử lại');
       } finally {
