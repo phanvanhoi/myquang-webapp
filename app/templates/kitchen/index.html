@@ -169,6 +169,7 @@ function kitchenApp(initial) {
       return rawItems.map(it => ({
         ...it,
         _age: Math.floor((now - new Date(it.created_at.replace(' ', 'T')).getTime()) / 60000),
+        _served: false, // khai báo sẵn để Alpine track reactivity khi mutate sau click
       }));
     },
 
