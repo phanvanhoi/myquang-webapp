@@ -6,11 +6,13 @@ const { releaseTableIfEmpty } = require('./tables');
 
 // Trang chi tiết order tập trung ở /tables/:tableId/order (POS) cho dine-in
 // và /takeaway/:id cho mang về. /orders chỉ giữ list view + redirect.
+// Sau split 1 bàn có thể có >1 active order, nên luôn truyền order_id để
+// disambiguate.
 function posUrlFor(order) {
   if (!order) return '/orders';
   return order.order_type === 'takeaway'
     ? `/takeaway/${order.id}`
-    : `/tables/${order.table_id}/order`;
+    : `/tables/${order.table_id}/order?order_id=${order.id}`;
 }
 
 // GET / — Danh sách orders đang mở

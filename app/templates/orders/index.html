@@ -56,7 +56,7 @@
       </thead>
       <tbody class="divide-y divide-gray-50">
         {% for order in orders %}
-        {% set pos_url %}{% if order.order_type == 'takeaway' %}/takeaway/{{ order.id }}{% else %}/tables/{{ order.table_id }}/order{% endif %}{% endset %}
+        {% set pos_url %}{% if order.order_type == 'takeaway' %}/takeaway/{{ order.id }}{% else %}/tables/{{ order.table_id }}/order?order_id={{ order.id }}{% endif %}{% endset %}
         <tr class="hover:bg-amber-50/40 transition-colors">
           {% if canMerge %}
           <td class="px-4 py-3 text-center">
@@ -114,7 +114,7 @@
   <!-- Mobile cards -->
   <div class="md:hidden space-y-3">
     {% for order in orders %}
-    {% set pos_url %}{% if order.order_type == 'takeaway' %}/takeaway/{{ order.id }}{% else %}/tables/{{ order.table_id }}/order{% endif %}{% endset %}
+    {% set pos_url %}{% if order.order_type == 'takeaway' %}/takeaway/{{ order.id }}{% else %}/tables/{{ order.table_id }}/order?order_id={{ order.id }}{% endif %}{% endset %}
     <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
       <div class="flex items-start justify-between mb-3 gap-3">
         {% if canMerge %}

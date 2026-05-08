@@ -222,17 +222,31 @@ router.get('/:id/order', (req, res) => {
   table.floor = table.floor_id ? { id: table.floor_id, name: table.floor_name } : null;
   table.room  = table.room_id  ? { id: table.room_id,  name: table.room_name  } : null;
 
-  // Lấy active order
-  const order = q.get(
-    `SELECT o.*,
-            u.full_name as user_full_name
-     FROM orders o
-     LEFT JOIN users u ON u.id = o.user_id
-     WHERE o.table_id = ? AND o.status IN ('open','serving')
-     ORDER BY o.created_at DESC
-     LIMIT 1`,
-    tableId
-  );
+  // Lấy active order. Nếu có ?order_id=X, ưu tiên order đó (sau split 1 bàn
+  // có thể có >1 order active). Nếu id không khớp bàn/status, fallback sang
+  // order mới nhất để URL cũ vẫn dùng được.
+  const requestedId = parseInt(req.query.order_id);
+  let order = null;
+  if (Number.isInteger(requestedId)) {
+    order = q.get(
+      `SELECT o.*, u.full_name as user_full_name
+       FROM orders o
+       LEFT JOIN users u ON u.id = o.user_id
+       WHERE o.id = ? AND o.table_id = ? AND o.status IN ('open','serving')`,
+      requestedId, tableId
+    );
+  }
+  if (!order) {
+    order = q.get(
+      `SELECT o.*, u.full_name as user_full_name
+       FROM orders o
+       LEFT JOIN users u ON u.id = o.user_id
+       WHERE o.table_id = ? AND o.status IN ('open','serving')
+       ORDER BY o.created_at DESC
+       LIMIT 1`,
+      tableId
+    );
+  }
 
   let items = [];
   if (order) {
