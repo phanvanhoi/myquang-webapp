@@ -4,7 +4,6 @@
 
 {% block head %}
 <style>
-  /* .pill-* defined globally in base.html */
   .age-warn   { color:#b45309; }
   .age-danger { color:#b91c1c; font-weight: 700; }
 </style>
@@ -20,42 +19,11 @@
   {# ── Toolbar ── #}
   <div class="flex flex-wrap items-center justify-between gap-3 bg-white rounded-xl shadow-sm border border-amber-100 px-4 py-3">
 
-    {# View toggle #}
-    <div class="flex rounded-lg border border-amber-200 overflow-hidden">
-      <button @click="viewMode = 'table'"
-              :class="viewMode === 'table' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
-              class="flex items-center gap-1.5 px-3 h-9 text-sm font-medium transition-colors border-r border-amber-200">
-        <i data-lucide="layout-grid" class="w-4 h-4"></i>
-        Theo bàn
-      </button>
-      <button @click="viewMode = 'item'"
-              :class="viewMode === 'item' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
-              class="flex items-center gap-1.5 px-3 h-9 text-sm font-medium transition-colors">
-        <i data-lucide="list" class="w-4 h-4"></i>
-        Theo món
-      </button>
+    <div class="text-sm text-gray-600">
+      <span class="font-semibold text-gray-800" x-text="itemsByTable.length"></span> bàn ·
+      <span class="font-semibold text-gray-800" x-text="items.length"></span> món đang chờ
     </div>
 
-    {# Status filter #}
-    <div class="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
-      <button @click="filter = 'all'"
-              :class="filter === 'all' ? 'bg-gray-100 text-gray-800' : 'bg-white text-gray-500'"
-              class="px-3 h-9 font-medium transition-colors border-r border-gray-200">
-        Tất cả (<span x-text="counts.total"></span>)
-      </button>
-      <button @click="filter = 'pending'"
-              :class="filter === 'pending' ? 'pill-pending font-semibold' : 'bg-white text-gray-500'"
-              class="px-3 h-9 transition-colors border-r border-gray-200">
-        Chờ (<span x-text="counts.pending"></span>)
-      </button>
-      <button @click="filter = 'preparing'"
-              :class="filter === 'preparing' ? 'pill-preparing font-semibold' : 'bg-white text-gray-500'"
-              class="px-3 h-9 transition-colors">
-        Đang làm (<span x-text="counts.preparing"></span>)
-      </button>
-    </div>
-
-    {# Sound toggle + Refresh status #}
     <div class="flex items-center gap-2 text-xs text-gray-400">
       <button @click="toggleSound()"
               :title="soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'"
@@ -81,7 +49,7 @@
   </div>
 
   {# ── Empty state ── #}
-  <template x-if="filteredItems.length === 0">
+  <template x-if="items.length === 0">
     <div class="bg-white rounded-2xl border border-amber-100 py-20 text-center">
       <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-50 mb-3">
         <i data-lucide="check-check" class="w-8 h-8 text-amber-400"></i>
@@ -91,10 +59,8 @@
     </div>
   </template>
 
-  {# ══════════════════════════════════
-     VIEW: THEO BÀN
-  ══════════════════════════════════ #}
-  <div x-show="viewMode === 'table' && filteredItems.length > 0"
+  {# ── Cards: 1 bàn = 1 card, 1 nút "Đã lên" duy nhất ── #}
+  <div x-show="items.length > 0"
        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     <template x-for="grp in itemsByTable" :key="grp.tableId">
       <div class="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden flex flex-col">
@@ -121,58 +87,26 @@
         <div class="divide-y divide-gray-50">
           <template x-for="it in grp.items" :key="it.id">
             <div class="px-4 py-3 flex items-center gap-3">
-              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
-                    :class="'pill-' + it.status"
-                    x-text="STATUS_LABEL[it.status]"></span>
               <div class="flex-1 min-w-0">
                 <div class="font-semibold text-gray-800 truncate" x-text="it.item_name + ' ×' + it.quantity"></div>
                 <div x-show="it.note" class="text-xs text-amber-600 italic truncate" x-text="it.note"></div>
               </div>
-              <button @click="advance(it)"
-                      :disabled="isBusy(it.id)"
-                      class="shrink-0 h-8 px-3 rounded-lg text-xs font-bold transition-colors"
-                      :class="actionClass(it)"
-                      x-text="isBusy(it.id) ? '...' : actionLabel(it)"></button>
             </div>
           </template>
         </div>
-      </div>
-    </template>
-  </div>
 
-  {# ══════════════════════════════════
-     VIEW: THEO MÓN
-  ══════════════════════════════════ #}
-  <div x-show="viewMode === 'item' && filteredItems.length > 0"
-       class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-    <template x-for="it in filteredItems" :key="it.id">
-      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-2"
-           :class="it.status === 'pending' ? 'border-l-4 border-l-yellow-400' : 'border-l-4 border-l-orange-400'">
-
-        <div class="flex items-center justify-between">
-          <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                :class="'pill-' + it.status"
-                x-text="STATUS_LABEL[it.status]"></span>
-          <span class="text-xs" :class="ageClass(it._age)" x-text="formatAge(it._age)"></span>
+        {# Single action: serve whole table #}
+        <div class="px-4 py-3 border-t border-gray-50 mt-auto">
+          <button @click="serveTable(grp)"
+                  :disabled="isBusy(grp.tableId)"
+                  class="w-full h-11 rounded-lg text-sm font-bold transition-colors
+                         bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white">
+            <span x-show="!isBusy(grp.tableId)">
+              Đã lên cả bàn (<span x-text="grp.items.length"></span>)
+            </span>
+            <span x-show="isBusy(grp.tableId)">Đang lưu...</span>
+          </button>
         </div>
-
-        <div class="font-bold text-gray-800 text-base leading-tight" x-text="it.item_name"></div>
-        <div class="text-2xl font-extrabold text-amber-600">×<span x-text="it.quantity"></span></div>
-        <div x-show="it.note" class="text-xs text-amber-600 italic" x-text="it.note"></div>
-
-        <div class="flex items-center justify-between mt-auto pt-2 border-t border-gray-50">
-          <div class="text-xs text-gray-500 truncate">
-            <span x-text="it.table_name || 'Mang về'"></span>
-            <span class="text-gray-300"> · </span>
-            <span class="font-mono" x-text="it.order_code"></span>
-          </div>
-        </div>
-
-        <button @click="advance(it)"
-                :disabled="isBusy(it.id)"
-                class="w-full h-10 rounded-lg text-sm font-bold transition-colors"
-                :class="actionClass(it)"
-                x-text="isBusy(it.id) ? 'Đang lưu...' : actionLabel(it)"></button>
       </div>
     </template>
   </div>
@@ -182,26 +116,13 @@
 
 {% block scripts %}
 <script>
-const STATUS_LABEL = Object.freeze({
-  pending: 'Chờ', preparing: 'Đang làm', served: 'Đã lên', cancelled: 'Huỷ',
-});
-const NEXT_STATUS = Object.freeze({ pending: 'preparing', preparing: 'served' });
-const ACTION_LABEL = Object.freeze({ pending: 'Bắt đầu', preparing: 'Đã lên' });
-const ACTION_CLASS = Object.freeze({
-  pending:   'bg-orange-500 hover:bg-orange-600 text-white',
-  preparing: 'bg-green-500 hover:bg-green-600 text-white',
-});
-
 function kitchenApp(initial) {
   return {
     items: [],
-    viewMode: 'table',
-    filter: 'all',
     refreshing: false,
-    busy: new Set(),
+    busyTables: new Set(),
     lastUpdate: 'vừa xong',
     soundEnabled: localStorage.getItem('kitchen_sound') === '1',
-    STATUS_LABEL,
     _pollerId: null,
     _unloadHandler: null,
     _seenIds: new Set(),
@@ -233,14 +154,11 @@ function kitchenApp(initial) {
     },
 
     signature(rawItems) {
-      // Guard against no-op renders: only id/status/quantity/note affect display.
-      return rawItems.map(it => `${it.id}:${it.status}:${it.quantity}:${it.note || ''}`).join('|');
+      // Chỉ id/qty/note ảnh hưởng hiển thị (status không còn render).
+      return rawItems.map(it => `${it.id}:${it.quantity}:${it.note || ''}`).join('|');
     },
 
-    isBusy(id) { return this.busy.has(id); },
-
-    actionLabel(it) { return ACTION_LABEL[it.status] || ''; },
-    actionClass(it) { return ACTION_CLASS[it.status] || ''; },
+    isBusy(tableId) { return this.busyTables.has(tableId); },
 
     toggleSound() {
       this.soundEnabled = !this.soundEnabled;
@@ -285,23 +203,9 @@ function kitchenApp(initial) {
       });
     },
 
-    get counts() {
-      let pending = 0, preparing = 0;
-      for (const it of this.items) {
-        if (it.status === 'pending') pending++;
-        else if (it.status === 'preparing') preparing++;
-      }
-      return { pending, preparing, total: this.items.length };
-    },
-
-    get filteredItems() {
-      if (this.filter === 'all') return this.items;
-      return this.items.filter(i => i.status === this.filter);
-    },
-
     get itemsByTable() {
       const groups = new Map();
-      for (const it of this.filteredItems) {
+      for (const it of this.items) {
         const key = it.table_id || ('to-' + it.order_id);
         let g = groups.get(key);
         if (!g) {
@@ -347,7 +251,6 @@ function kitchenApp(initial) {
           const sig = this.signature(data.items);
           this.lastUpdate = this.formatTime(new Date());
           if (sig === this._lastSig) {
-            // Vẫn refresh _age (đếm phút trôi) nhưng không đụng items reactive
             this.items.forEach(it => {
               it._age = Math.floor((Date.now() - new Date(it.created_at.replace(' ', 'T')).getTime()) / 60000);
             });
@@ -356,7 +259,6 @@ function kitchenApp(initial) {
           this._lastSig = sig;
           const newIds = data.items.filter(it => !this._seenIds.has(it.id)).map(it => it.id);
           this.items = this.annotate(data.items);
-          // Bound _seenIds: chỉ giữ id còn active để Set không phình lên qua nhiều ca
           this._seenIds = new Set(data.items.map(it => it.id));
           if (newIds.length > 0) this.beep();
         }
@@ -367,24 +269,23 @@ function kitchenApp(initial) {
       }
     },
 
-    async advance(it) {
-      const next = NEXT_STATUS[it.status];
-      if (!next || this.busy.has(it.id)) return;
-      this.busy.add(it.id);
-      this.busy = new Set(this.busy); // trigger Alpine reactivity
+    async serveTable(grp) {
+      if (this.busyTables.has(grp.tableId)) return;
+      const ids = grp.items.map(it => it.id);
+      if (!ids.length) return;
+
+      this.busyTables.add(grp.tableId);
+      this.busyTables = new Set(this.busyTables);
       try {
-        const resp = await fetch(`/kitchen/items/${it.id}/status`, {
+        const resp = await fetch('/kitchen/items/bulk-served', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: next }),
+          body: JSON.stringify({ ids }),
         });
         const data = await resp.json();
         if (data.success) {
-          if (next === 'served') {
-            this.items = this.items.filter(x => x.id !== it.id);
-          } else {
-            it.status = next;
-          }
+          const idSet = new Set(ids);
+          this.items = this.items.filter(x => !idSet.has(x.id));
           this._lastSig = this.signature(this.items);
         } else {
           alert(data.error || 'Có lỗi xảy ra');
@@ -392,8 +293,8 @@ function kitchenApp(initial) {
       } catch (e) {
         alert('Lỗi kết nối, thử lại');
       } finally {
-        this.busy.delete(it.id);
-        this.busy = new Set(this.busy);
+        this.busyTables.delete(grp.tableId);
+        this.busyTables = new Set(this.busyTables);
       }
     },
   };

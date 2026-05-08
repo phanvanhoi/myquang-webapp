@@ -6,7 +6,7 @@ const { requireAuth } = require('../middleware/auth');
 router.use(requireAuth);
 
 const SQL_KITCHEN_ITEMS = `
-  SELECT oi.id, oi.quantity, oi.note, oi.status, oi.created_at,
+  SELECT oi.id, oi.quantity, oi.note, oi.created_at,
          mi.name AS item_name,
          o.id AS order_id, o.order_code, o.guest_count, o.created_at AS order_created_at,
          t.id AS table_id, t.name AS table_name, t.code AS table_code,
@@ -34,37 +34,29 @@ router.get('/data', (req, res) => {
   res.json({ success: true, items, ts: Date.now() });
 });
 
-// pending → preparing → served (the only legal forward transitions from KDS)
-const PREVIOUS_STATUS = { preparing: 'pending', served: 'preparing' };
+// POST /kitchen/items/bulk-served — đánh dấu cả bàn "đã lên" trong 1 phát
+// body: { ids: [number, ...] }
+router.post('/items/bulk-served', (req, res) => {
+  const ids = Array.isArray(req.body.ids)
+    ? req.body.ids.map(Number).filter(Number.isInteger)
+    : [];
 
-// POST /kitchen/items/:id/status — đổi trạng thái món
-// body: { status: 'preparing' | 'served' }
-router.post('/items/:id/status', (req, res) => {
-  const itemId = parseInt(req.params.id);
-  const newStatus = req.body.status;
-  const expectedPrev = PREVIOUS_STATUS[newStatus];
-
-  if (!expectedPrev) {
-    return res.status(400).json({ success: false, error: 'Trạng thái không hợp lệ' });
+  if (!ids.length) {
+    return res.status(400).json({ success: false, error: 'Thiếu danh sách món' });
   }
 
-  // Atomic compare-and-swap: chỉ update nếu status hiện tại đúng expected.
-  // Tránh race khi 2 cook cùng bấm — chỉ một request thắng.
+  // Compare-and-swap: chỉ chuyển sang served nếu món vẫn còn pending/preparing.
+  // Món nào đã bị huỷ/served bởi luồng khác sẽ bị bỏ qua an toàn.
+  const placeholders = ids.map(() => '?').join(',');
   const result = q.run(
     `UPDATE order_items
-       SET status = ?, updated_at = datetime('now','localtime')
-     WHERE id = ? AND status = ?`,
-    newStatus, itemId, expectedPrev
+       SET status = 'served', updated_at = datetime('now','localtime')
+     WHERE id IN (${placeholders})
+       AND status IN ('pending','preparing')`,
+    ...ids
   );
 
-  if (!result.changes) {
-    return res.status(409).json({
-      success: false,
-      error: 'Món đã được cập nhật bởi người khác, vui lòng làm mới.',
-    });
-  }
-
-  return res.json({ success: true, status: newStatus });
+  return res.json({ success: true, changed: result.changes });
 });
 
 module.exports = router;
