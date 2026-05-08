@@ -2,8 +2,10 @@
 {% block title %}Orders{% endblock %}
 {% block page_title %}Orders đang mở{% endblock %}
 
-{% block content %}
+{# Top-level set so canMerge is visible cả trong content lẫn scripts block. #}
 {% set canMerge = session.role == 'admin' or session.role == 'cashier' %}
+
+{% block content %}
 {% if canMerge %}
 <script>
   const _ordersData = [
@@ -254,7 +256,6 @@
 </div>
 {% endblock %}
 
-{% if canMerge %}
 {% block scripts %}
 <script>
 function ordersList(initialOrders) {
@@ -332,4 +333,3 @@ function ordersList(initialOrders) {
 }
 </script>
 {% endblock %}
-{% endif %}
