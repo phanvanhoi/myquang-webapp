@@ -315,4 +315,23 @@ router.post('/:id/close', (req, res) => {
   res.redirect('/tables');
 });
 
+// Set bàn về 'available' nếu không còn order open/serving nào trên bàn đó.
+// Dùng sau khi merge gom items khỏi 1 bàn — bàn đó có thể đã trống.
+// Không đụng bàn sentinel "Mang về" (is_takeaway=1).
+function releaseTableIfEmpty(tableId) {
+  if (!tableId) return;
+  const stillActive = q.get(
+    `SELECT 1 FROM orders WHERE table_id = ? AND status IN ('open','serving') LIMIT 1`,
+    tableId
+  );
+  if (!stillActive) {
+    q.run(
+      `UPDATE tables SET status = 'available', updated_at = datetime('now','localtime')
+       WHERE id = ? AND is_takeaway = 0`,
+      tableId
+    );
+  }
+}
+
 module.exports = router;
+module.exports.releaseTableIfEmpty = releaseTableIfEmpty;

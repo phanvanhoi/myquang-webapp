@@ -3,7 +3,28 @@
 {% block page_title %}Orders đang mở{% endblock %}
 
 {% block content %}
-<div class="space-y-4">
+{% set canMerge = session.role == 'admin' or session.role == 'cashier' %}
+{% if canMerge %}
+<script>
+  const _ordersData = [
+    {% for order in orders %}
+    {
+      id: {{ order.id }},
+      order_code: {{ order.order_code | tojson }},
+      table_name: {{ (order.table_name or '') | tojson }},
+      order_type: {{ (order.order_type or 'dine_in') | tojson }},
+      final_amount: {{ order.final_amount or 0 }},
+      item_count: {{ order.item_count or 0 }},
+      created_at: {{ (order.created_at or '') | tojson }},
+      customer_address: {{ (order.customer_address or '') | tojson }},
+    },
+    {% endfor %}
+  ];
+</script>
+{% endif %}
+
+<div class="space-y-4"
+     {% if canMerge %}x-data="ordersList(_ordersData)"{% endif %}>
 
   <!-- Header -->
   <div class="flex items-center justify-between">
@@ -23,6 +44,7 @@
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+          {% if canMerge %}<th class="w-10 px-4 py-3 text-center"></th>{% endif %}
           <th class="px-5 py-3 text-left">Mã order</th>
           <th class="px-5 py-3 text-left">Bàn</th>
           <th class="px-5 py-3 text-left">Thời gian mở</th>
@@ -36,6 +58,13 @@
         {% for order in orders %}
         {% set pos_url %}{% if order.order_type == 'takeaway' %}/takeaway/{{ order.id }}{% else %}/tables/{{ order.table_id }}/order{% endif %}{% endset %}
         <tr class="hover:bg-amber-50/40 transition-colors">
+          {% if canMerge %}
+          <td class="px-4 py-3 text-center">
+            <input type="checkbox" :checked="isSelected({{ order.id }})"
+                   @change="toggle({{ order.id }})"
+                   class="w-4 h-4 rounded border-gray-300 text-amber-500 focus:ring-amber-400" />
+          </td>
+          {% endif %}
           <td class="px-5 py-3 font-mono text-xs text-gray-500">{{ order.order_code }}</td>
           <td class="px-5 py-3 font-semibold text-gray-800">
             {% if order.customer_address %}
@@ -87,8 +116,13 @@
     {% for order in orders %}
     {% set pos_url %}{% if order.order_type == 'takeaway' %}/takeaway/{{ order.id }}{% else %}/tables/{{ order.table_id }}/order{% endif %}{% endset %}
     <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-      <div class="flex items-start justify-between mb-3">
-        <div>
+      <div class="flex items-start justify-between mb-3 gap-3">
+        {% if canMerge %}
+        <input type="checkbox" :checked="isSelected({{ order.id }})"
+               @change="toggle({{ order.id }})"
+               class="w-5 h-5 mt-0.5 rounded border-gray-300 text-amber-500 focus:ring-amber-400 shrink-0" />
+        {% endif %}
+        <div class="flex-1 min-w-0">
           {% if order.customer_address %}
           <div class="font-semibold text-gray-800 flex items-center gap-1.5">
             <i data-lucide="bike" class="w-4 h-4 text-amber-600"></i>
@@ -104,9 +138,9 @@
           <div class="text-xs text-gray-400 mt-0.5 font-mono">{{ order.order_code }}</div>
         </div>
         {% if order.status == 'open' %}
-        <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Mở</span>
+        <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 shrink-0">Mở</span>
         {% elif order.status == 'serving' %}
-        <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Đang phục vụ</span>
+        <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 shrink-0">Đang phục vụ</span>
         {% endif %}
       </div>
 
@@ -144,5 +178,158 @@
   </div>
   {% endif %}
 
+  {% if canMerge %}
+  {# ── Sticky bar khi đã chọn ≥ 2 ── #}
+  <div x-show="selected.length >= 2" x-cloak x-transition
+       class="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-amber-200 shadow-lg p-3 flex items-center gap-3 max-w-3xl mx-auto md:rounded-t-2xl md:left-1/2 md:-translate-x-1/2">
+    <div class="flex-1 text-sm">
+      Đã chọn <span class="font-bold text-amber-600" x-text="selected.length"></span> hóa đơn
+      <span class="text-xs text-gray-400">cùng loại: <span x-text="commonType()"></span></span>
+    </div>
+    <button @click="selected = []"
+            class="h-9 px-3 rounded-lg border border-gray-200 text-gray-600 text-xs hover:bg-gray-50">
+      Bỏ chọn
+    </button>
+    <button @click="openMerge()"
+            :disabled="!canMergeNow()"
+            class="h-9 px-4 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed">
+      <i data-lucide="merge" class="w-4 h-4 inline-block mr-1"></i> Gộp HĐ
+    </button>
+  </div>
+
+  {# ── Merge modal ── #}
+  <div x-show="mergeOpen" x-cloak x-transition
+       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+       @click.self="mergeOpen = false">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col" @click.stop>
+      <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+        <div class="font-semibold text-gray-800 flex items-center gap-2">
+          <i data-lucide="merge" class="w-4 h-4 text-amber-500"></i>
+          Gộp hóa đơn
+        </div>
+        <button @click="mergeOpen = false" aria-label="Đóng" class="text-gray-400 hover:text-gray-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="px-5 py-3 text-xs text-gray-500 border-b border-gray-50 bg-gray-50">
+        Chọn hóa đơn ĐÍCH — items từ các HĐ khác sẽ chuyển vào HĐ đích. Các HĐ nguồn chuyển sang trạng thái <span class="font-semibold">đã gộp</span>.
+      </div>
+
+      <div class="flex-1 overflow-y-auto divide-y divide-gray-100">
+        <template x-for="o in selectedOrders()" :key="o.id">
+          <label class="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-amber-50/50 transition-colors">
+            <input type="radio" name="merge-target" :value="o.id"
+                   :checked="targetId === o.id" @change="targetId = o.id"
+                   class="w-4 h-4 text-amber-500 focus:ring-amber-400 shrink-0" />
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-semibold text-gray-800 truncate" x-text="o.table_name || 'Mang về'"></div>
+              <div class="text-xs text-gray-400 font-mono" x-text="o.order_code + ' · ' + o.item_count + ' món'"></div>
+            </div>
+            <div class="text-sm font-bold text-amber-600 shrink-0"
+                 x-text="new Intl.NumberFormat('vi-VN').format(o.final_amount) + 'đ'"></div>
+          </label>
+        </template>
+      </div>
+
+      <div class="px-5 py-3 border-t border-gray-100 flex items-center gap-2 bg-gray-50">
+        <button @click="mergeOpen = false"
+                class="flex-1 h-10 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-white transition">
+          Đóng
+        </button>
+        <button @click="submitMerge()"
+                :disabled="mergeLoading || !targetId"
+                class="flex-1 h-10 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold transition disabled:bg-gray-300">
+          <span x-show="!mergeLoading">Gộp vào HĐ này</span>
+          <span x-show="mergeLoading" class="inline-flex items-center gap-1.5">
+            <span class="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            Đang gộp...
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}
+
+{% if canMerge %}
+{% block scripts %}
+<script>
+function ordersList(initialOrders) {
+  return {
+    orders: initialOrders,
+    selected: [],          // ids đã tick
+    mergeOpen: false,
+    mergeLoading: false,
+    targetId: null,
+
+    isSelected(id) { return this.selected.includes(id); },
+
+    toggle(id) {
+      const i = this.selected.indexOf(id);
+      if (i >= 0) this.selected.splice(i, 1);
+      else this.selected.push(id);
+    },
+
+    selectedOrders() {
+      const set = new Set(this.selected);
+      return this.orders.filter(o => set.has(o.id));
+    },
+
+    commonType() {
+      const types = new Set(this.selectedOrders().map(o => o.order_type));
+      if (types.size === 0) return '';
+      if (types.size > 1) return '⚠ khác loại';
+      return [...types][0] === 'takeaway' ? 'mang về' : 'tại bàn';
+    },
+
+    canMergeNow() {
+      const orders = this.selectedOrders();
+      if (orders.length < 2) return false;
+      const types = new Set(orders.map(o => o.order_type));
+      return types.size === 1;
+    },
+
+    openMerge() {
+      if (!this.canMergeNow()) return;
+      // Default: chọn HĐ có nhiều items nhất làm target
+      const orders = this.selectedOrders();
+      const sorted = [...orders].sort((a, b) => b.item_count - a.item_count);
+      this.targetId = sorted[0].id;
+      this.mergeOpen = true;
+      this.$nextTick(() => lucide.createIcons());
+    },
+
+    async submitMerge() {
+      if (this.mergeLoading || !this.targetId) return;
+      const sourceIds = this.selected.filter(id => id !== this.targetId);
+      if (sourceIds.length === 0) {
+        alert('Cần ít nhất 1 HĐ nguồn (không phải đích)');
+        return;
+      }
+      this.mergeLoading = true;
+      try {
+        const resp = await fetch('/orders/merge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_ids: sourceIds, target_id: this.targetId }),
+        });
+        const data = await resp.json();
+        if (data.success) {
+          window.location.href = data.redirect;
+        } else {
+          alert(data.error || 'Có lỗi khi gộp hóa đơn');
+        }
+      } catch (e) {
+        alert('Lỗi kết nối, thử lại');
+      } finally {
+        this.mergeLoading = false;
+      }
+    },
+  };
+}
+</script>
+{% endblock %}
+{% endif %}

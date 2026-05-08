@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { q } = require('../db');
 const { requireAuth, requireAdminOrCashier } = require('../middleware/auth');
+const { releaseTableIfEmpty } = require('./tables');
 
 // Trang chi tiết order tập trung ở /tables/:tableId/order (POS) cho dine-in
 // và /takeaway/:id cho mang về. /orders chỉ giữ list view + redirect.
@@ -241,6 +242,188 @@ router.post('/:id/cancel', requireAdminOrCashier, (req, res) => {
   );
   res.flash('success', 'Đã huỷ order');
   res.redirect('/tables');
+});
+
+// ─────────────────────────────────────────────
+// POST /orders/:id/split — Tách 1 số món sang HĐ mới (cùng bàn, mã mới)
+// ─────────────────────────────────────────────
+router.post('/:id/split', requireAdminOrCashier, (req, res) => {
+  const sourceId = parseInt(req.params.id);
+  const itemIds = Array.isArray(req.body.item_ids)
+    ? req.body.item_ids.map(Number).filter(Number.isInteger)
+    : [];
+
+  if (!itemIds.length) {
+    return res.status(400).json({ success: false, error: 'Chưa chọn món để tách' });
+  }
+
+  const source = q.get(`SELECT * FROM orders WHERE id = ?`, sourceId);
+  if (!source) {
+    return res.status(404).json({ success: false, error: 'Không tìm thấy order' });
+  }
+  if (!['open', 'serving'].includes(source.status)) {
+    return res.status(400).json({
+      success: false,
+      error: `Chỉ tách được order chưa thanh toán (hiện: ${source.status})`,
+    });
+  }
+
+  // Validate: items thuộc source, chưa cancelled
+  const placeholders = itemIds.map(() => '?').join(',');
+  const validItems = q.all(
+    `SELECT id FROM order_items
+     WHERE id IN (${placeholders}) AND order_id = ? AND status != 'cancelled'`,
+    ...itemIds, sourceId
+  );
+  if (validItems.length !== itemIds.length) {
+    return res.status(400).json({
+      success: false,
+      error: 'Một số món không thuộc order này hoặc đã bị huỷ',
+    });
+  }
+
+  // Phải chừa lại ít nhất 1 món non-cancelled cho source — không được tách hết
+  const totalRow = q.get(
+    `SELECT COUNT(*) AS c FROM order_items WHERE order_id = ? AND status != 'cancelled'`,
+    sourceId
+  );
+  if (totalRow.c <= itemIds.length) {
+    return res.status(400).json({
+      success: false,
+      error: 'Phải để lại ít nhất 1 món ở hóa đơn gốc. Nếu muốn chuyển hết, đổi mã thay vì tách.',
+    });
+  }
+
+  let newOrderId;
+  try {
+    const doSplit = q.transaction(() => {
+      const newCode = q.generateOrderCode();
+      const ins = q.run(
+        `INSERT INTO orders (table_id, user_id, order_code, status, order_type,
+                             guest_count, created_at, updated_at)
+         VALUES (?, ?, ?, 'serving', ?, ?, datetime('now','localtime'), datetime('now','localtime'))`,
+        source.table_id, source.user_id, newCode, source.order_type, source.guest_count
+      );
+      newOrderId = ins.lastInsertRowid;
+
+      q.run(
+        `UPDATE order_items SET order_id = ?, updated_at = datetime('now','localtime')
+         WHERE id IN (${placeholders}) AND order_id = ?`,
+        newOrderId, ...itemIds, sourceId
+      );
+
+      q.recalcOrder(sourceId);
+      q.recalcOrder(newOrderId);
+    });
+    doSplit();
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+
+  const newOrder = q.get(`SELECT id, table_id, order_type FROM orders WHERE id = ?`, newOrderId);
+  return res.json({
+    success: true,
+    new_order_id: newOrderId,
+    redirect: posUrlFor(newOrder),
+  });
+});
+
+// ─────────────────────────────────────────────
+// POST /orders/merge — Gộp 1+ order nguồn vào 1 order đích
+// ─────────────────────────────────────────────
+router.post('/merge', requireAdminOrCashier, (req, res) => {
+  const targetId = parseInt(req.body.target_id);
+  const sourceIds = Array.isArray(req.body.source_ids)
+    ? req.body.source_ids.map(Number).filter(Number.isInteger)
+    : [];
+
+  if (!targetId || !sourceIds.length) {
+    return res.status(400).json({
+      success: false,
+      error: 'Thiếu order đích hoặc danh sách order nguồn',
+    });
+  }
+  if (sourceIds.includes(targetId)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Order đích không được nằm trong danh sách nguồn',
+    });
+  }
+
+  const target = q.get(`SELECT * FROM orders WHERE id = ?`, targetId);
+  if (!target) {
+    return res.status(404).json({ success: false, error: 'Không tìm thấy order đích' });
+  }
+  if (!['open', 'serving'].includes(target.status)) {
+    return res.status(400).json({
+      success: false,
+      error: `Order đích phải đang mở (hiện: ${target.status})`,
+    });
+  }
+
+  const srcPlaceholders = sourceIds.map(() => '?').join(',');
+  const sources = q.all(
+    `SELECT id, status, order_type, table_id, order_code FROM orders WHERE id IN (${srcPlaceholders})`,
+    ...sourceIds
+  );
+  if (sources.length !== sourceIds.length) {
+    return res.status(400).json({
+      success: false,
+      error: 'Một số order nguồn không tồn tại',
+    });
+  }
+  for (const s of sources) {
+    if (!['open', 'serving'].includes(s.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Order ${s.order_code} không ở trạng thái mở (hiện: ${s.status})`,
+      });
+    }
+    if (s.order_type !== target.order_type) {
+      return res.status(400).json({
+        success: false,
+        error: 'Không thể gộp order khác loại (dine_in vs takeaway)',
+      });
+    }
+  }
+
+  const sourceTableIds = [...new Set(sources.map(s => s.table_id))];
+
+  try {
+    const doMerge = q.transaction(() => {
+      // Di chuyển TẤT CẢ items (kể cả cancelled, để giữ audit trail)
+      q.run(
+        `UPDATE order_items SET order_id = ?, updated_at = datetime('now','localtime')
+         WHERE order_id IN (${srcPlaceholders})`,
+        targetId, ...sourceIds
+      );
+
+      // Đánh dấu sources merged + ghi note
+      const note = `[Merged into ${target.order_code}]`;
+      q.run(
+        `UPDATE orders
+         SET status = 'merged',
+             note = COALESCE(note || ' ', '') || ?,
+             updated_at = datetime('now','localtime')
+         WHERE id IN (${srcPlaceholders})`,
+        note, ...sourceIds
+      );
+
+      q.recalcOrder(targetId);
+
+      // Giải phóng bàn nguồn nếu không còn order nào active
+      sourceTableIds.forEach(tid => releaseTableIfEmpty(tid));
+    });
+    doMerge();
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+
+  return res.json({
+    success: true,
+    merged_count: sources.length,
+    redirect: posUrlFor(target),
+  });
 });
 
 module.exports = router;

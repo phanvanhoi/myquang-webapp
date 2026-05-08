@@ -85,6 +85,18 @@
   const _posOrderId         = {{ order.id }};
   const _posServerItemCount = {{ items | length }};
   const _posExistingTotal   = {{ order.total_amount or 0 }};
+  // Items có thể tách (chưa cancelled) — chỉ id+name+qty+subtotal cho modal
+  const _posSplittable = [
+    {% for item in items %}{% if item.status != 'cancelled' %}
+    {
+      id: {{ item.id }},
+      name: {{ (item.menu_item.name if item.menu_item else item.item_name) | tojson }},
+      qty: {{ item.quantity }},
+      subtotal: {{ item.subtotal }},
+      status: {{ item.status | tojson }},
+    },
+    {% endif %}{% endfor %}
+  ];
 </script>
 
 {# ══════════════════════════════════════════════════════════
@@ -193,16 +205,26 @@
       </button>
 
       {% if session.role == 'admin' or session.role == 'cashier' %}
-      <button type="button" @click="cancelOpen = true"
-              class="w-full h-9 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 text-xs font-medium
-                     flex items-center justify-center gap-1.5 transition-colors">
-        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-        Hủy order
-      </button>
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" @click="splitOpen = true"
+                :disabled="splitItems.length < 2"
+                class="h-9 rounded-xl border border-amber-200 text-amber-600 hover:bg-amber-50 text-xs font-medium
+                       flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+          <i data-lucide="split" class="w-3.5 h-3.5"></i>
+          Tách HĐ
+        </button>
+        <button type="button" @click="cancelOpen = true"
+                class="h-9 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 text-xs font-medium
+                       flex items-center justify-center gap-1.5 transition-colors">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          Hủy order
+        </button>
+      </div>
       {% endif %}
     </div>
 
     {% if session.role == 'admin' or session.role == 'cashier' %}
+    {% include "tables/_pos_split_modal.html" %}
     {# Cancel modal — at root of x-data so position:fixed escapes cleanly #}
     <div x-show="cancelOpen" x-cloak x-transition
          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
@@ -341,12 +363,21 @@
             <span x-text="cart.length > 0 ? 'Gửi bếp + Thanh toán' : 'Thanh toán'"></span>
           </button>
           {% if session.role == 'admin' or session.role == 'cashier' %}
-          <button type="button" @click="cancelOpen = true"
-                  class="w-full h-10 rounded-xl border border-red-200 text-red-500 active:bg-red-50 text-sm font-medium
-                         flex items-center justify-center gap-1.5 transition-colors">
-            <i data-lucide="trash-2" class="w-4 h-4"></i>
-            Hủy order
-          </button>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" @click="splitOpen = true"
+                    :disabled="splitItems.length < 2"
+                    class="h-10 rounded-xl border border-amber-200 text-amber-600 active:bg-amber-50 text-sm font-medium
+                           flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40">
+              <i data-lucide="split" class="w-4 h-4"></i>
+              Tách HĐ
+            </button>
+            <button type="button" @click="cancelOpen = true"
+                    class="h-10 rounded-xl border border-red-200 text-red-500 active:bg-red-50 text-sm font-medium
+                           flex items-center justify-center gap-1.5 transition-colors">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+              Hủy order
+            </button>
+          </div>
           {% endif %}
         </div>
       </template>
@@ -354,6 +385,7 @@
   </section>
 
   {% if session.role == 'admin' or session.role == 'cashier' %}
+  {% include "tables/_pos_split_modal.html" %}
   {# Cancel modal — at root of x-data so position:fixed escapes the sheet cleanly #}
   <div x-show="cancelOpen" x-cloak x-transition
        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
@@ -398,6 +430,10 @@ function posOrder(menuItems, orderId, serverItemCount, existingTotal) {
     activeCat: 0,
     cartOpen: false,    // mobile bottom sheet expanded?
     cancelOpen: false,  // shared cancel-order modal
+    splitOpen: false,   // split-order modal
+    splitSelected: [],
+    splitItems: (typeof _posSplittable !== 'undefined') ? _posSplittable : [],
+    splitLoading: false,
     sending: false,
 
     get filteredItems() {
@@ -426,6 +462,41 @@ function posOrder(menuItems, orderId, serverItemCount, existingTotal) {
 
     fmt(val) {
       return new Intl.NumberFormat('vi-VN').format(val || 0) + 'đ';
+    },
+
+    get splitSelectedCount() { return this.splitSelected.length; },
+
+    toggleSplit(id) {
+      const i = this.splitSelected.indexOf(id);
+      if (i >= 0) this.splitSelected.splice(i, 1);
+      else this.splitSelected.push(id);
+    },
+
+    async submitSplit() {
+      if (this.splitLoading) return;
+      if (this.splitSelected.length === 0) return;
+      if (this.splitSelected.length >= this.splitItems.length) {
+        alert('Phải để lại ít nhất 1 món ở HĐ gốc.');
+        return;
+      }
+      this.splitLoading = true;
+      try {
+        const resp = await fetch(`/orders/${this.orderId}/split`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item_ids: this.splitSelected }),
+        });
+        const data = await resp.json();
+        if (data.success) {
+          window.location.href = data.redirect;
+        } else {
+          alert(data.error || 'Có lỗi khi tách hóa đơn');
+        }
+      } catch (e) {
+        alert('Lỗi kết nối, thử lại');
+      } finally {
+        this.splitLoading = false;
+      }
     },
 
     cartCount(itemId) {

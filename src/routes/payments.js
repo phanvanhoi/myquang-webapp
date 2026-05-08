@@ -91,6 +91,20 @@ router.get('/history', requireAdminOrCashier, (req, res) => {
     start, end
   );
 
+  // Đơn đã gộp trong khoảng (cho audit) — note có dạng "[Merged into ORD-...]"
+  const mergedOrders = q.all(
+    `SELECT o.id, o.order_code, o.total_amount, o.note, o.updated_at,
+            t.name AS table_name,
+            u.full_name AS user_name
+     FROM orders o
+     JOIN tables t ON t.id = o.table_id
+     LEFT JOIN users u ON u.id = o.user_id
+     WHERE o.status = 'merged'
+       AND date(o.updated_at) BETWEEN ? AND ?
+     ORDER BY o.updated_at DESC`,
+    start, end
+  );
+
   // Tổng tiền mặt / chuyển khoản
   const totals = q.get(
     `SELECT COALESCE(SUM(CASE WHEN pm.name = 'Tiền mặt'    THEN p.amount END), 0) AS cash,
@@ -123,7 +137,7 @@ router.get('/history', requireAdminOrCashier, (req, res) => {
   };
 
   res.render('payments/history.html', {
-    orders, cancelledOrders, dailyBreakdown,
+    orders, cancelledOrders, mergedOrders, dailyBreakdown,
     start, end,
     isRange: start !== end,
     totalRevenue, cashTotal, transferTotal,

@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS orders (
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   order_code TEXT NOT NULL UNIQUE,
   status TEXT NOT NULL DEFAULT 'open'
-    CHECK (status IN ('open','serving','completed','cancelled')),
+    CHECK (status IN ('open','serving','completed','cancelled','merged')),
   order_type TEXT NOT NULL DEFAULT 'dine_in'
     CHECK (order_type IN ('dine_in','takeaway')),
   note TEXT,

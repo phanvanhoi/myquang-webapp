@@ -1,0 +1,65 @@
+{# Split-order modal (shared desktop/mobile).
+   Alpine context required: splitOpen, splitSelected, splitItems, splitLoading,
+                            toggleSplit, submitSplit, splitSelectedCount.
+   Hiện nút trigger ở footer riêng từng layout. Modal này chỉ là dialog. #}
+<div x-show="splitOpen" x-cloak x-transition
+     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+     @click.self="splitOpen = false">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col" @click.stop>
+    <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+      <div class="font-semibold text-gray-800 flex items-center gap-2">
+        <i data-lucide="split" class="w-4 h-4 text-amber-500"></i>
+        Tách hóa đơn
+      </div>
+      <button @click="splitOpen = false" aria-label="Đóng"
+              class="text-gray-400 hover:text-gray-600">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <div class="px-5 py-3 text-xs text-gray-500 border-b border-gray-50 bg-gray-50">
+      Chọn các món muốn chuyển sang HĐ mới. Phải để lại ít nhất 1 món ở HĐ gốc.
+    </div>
+
+    <div class="flex-1 overflow-y-auto divide-y divide-gray-100">
+      <template x-for="it in splitItems" :key="it.id">
+        <label class="flex items-center gap-3 px-5 py-2.5 cursor-pointer hover:bg-amber-50/50 transition-colors">
+          <input type="checkbox"
+                 :checked="splitSelected.includes(it.id)"
+                 @change="toggleSplit(it.id)"
+                 class="w-4 h-4 rounded border-gray-300 text-amber-500 focus:ring-amber-400 shrink-0" />
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-gray-800 truncate" x-text="it.name"></div>
+            <div class="text-xs text-gray-400">
+              ×<span x-text="it.qty"></span>
+              · <span class="capitalize" x-text="it.status === 'pending' ? 'Chờ' : it.status === 'preparing' ? 'Đang làm' : 'Đã lên'"></span>
+            </div>
+          </div>
+          <div class="text-sm font-semibold text-gray-700 shrink-0"
+               x-text="new Intl.NumberFormat('vi-VN').format(it.subtotal) + 'đ'"></div>
+        </label>
+      </template>
+      <template x-if="splitItems.length === 0">
+        <div class="py-10 text-center text-sm text-gray-400">Không có món nào để tách.</div>
+      </template>
+    </div>
+
+    <div class="px-5 py-3 border-t border-gray-100 flex items-center gap-2 bg-gray-50">
+      <button @click="splitOpen = false"
+              class="flex-1 h-10 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-white transition">
+        Đóng
+      </button>
+      <button @click="submitSplit()"
+              :disabled="splitLoading || splitSelectedCount === 0 || splitSelectedCount >= splitItems.length"
+              class="flex-1 h-10 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold transition disabled:bg-gray-300">
+        <span x-show="!splitLoading">
+          Tách <span x-text="splitSelectedCount"></span> món
+        </span>
+        <span x-show="splitLoading" class="inline-flex items-center gap-1.5">
+          <span class="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+          Đang tách...
+        </span>
+      </button>
+    </div>
+  </div>
+</div>

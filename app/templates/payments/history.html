@@ -317,5 +317,75 @@
   </div>
   {% endif %}
 
+  <!-- ── Hóa đơn đã gộp (audit) ── -->
+  {% if mergedOrders | length > 0 %}
+  <div x-data="{ open: false }"
+       class="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+    <button type="button" @click="open = !open"
+            class="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-amber-50/50 transition-colors">
+      <span class="flex items-center gap-2 font-semibold text-amber-700">
+        <i data-lucide="merge" class="w-4 h-4"></i>
+        Hóa đơn đã gộp
+        <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs">{{ mergedOrders | length }}</span>
+      </span>
+      <i :data-lucide="open ? 'chevron-up' : 'chevron-down'" class="w-4 h-4 text-amber-400"></i>
+    </button>
+    <div x-show="open" x-cloak class="border-t border-amber-50">
+      <!-- Desktop -->
+      <div class="hidden md:block overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-amber-50/60 border-b border-amber-100">
+              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Số HĐ</th>
+              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Bàn</th>
+              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Giờ gộp</th>
+              <th class="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase">Số tiền (trước gộp)</th>
+              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Người tạo</th>
+              <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Gộp vào</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+            {% for o in mergedOrders %}
+            <tr class="hover:bg-amber-50/40 transition-colors">
+              <td class="px-4 py-2.5">
+                <span class="font-mono text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">{{ o.order_code }}</span>
+              </td>
+              <td class="px-4 py-2.5 font-medium text-gray-800">{{ o.table_name }}</td>
+              <td class="px-4 py-2.5 text-gray-500">{{ o.updated_at | dt if o.updated_at else '—' }}</td>
+              <td class="px-4 py-2.5 text-right text-gray-700">{{ o.total_amount | currency }}</td>
+              <td class="px-4 py-2.5 text-gray-500">{{ o.user_name or '—' }}</td>
+              <td class="px-4 py-2.5 text-amber-700 text-xs">{{ o.note or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <!-- Mobile -->
+      <div class="md:hidden divide-y divide-amber-50">
+        {% for o in mergedOrders %}
+        <div class="p-4">
+          <div class="flex items-start justify-between gap-3 mb-1">
+            <div class="min-w-0">
+              <div class="font-semibold text-gray-800 text-sm">{{ o.table_name }}</div>
+              <div class="font-mono text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded inline-block mt-1">{{ o.order_code }}</div>
+            </div>
+            <div class="text-right text-xs text-gray-500 shrink-0">
+              {{ o.updated_at | dt if o.updated_at else '—' }}
+            </div>
+          </div>
+          <div class="flex items-center justify-between text-xs text-gray-500">
+            <span>{{ o.user_name or '—' }}</span>
+            <span class="text-gray-700 font-medium">{{ o.total_amount | currency }}</span>
+          </div>
+          {% if o.note %}
+          <div class="mt-2 text-xs text-amber-700 italic">{{ o.note }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}
