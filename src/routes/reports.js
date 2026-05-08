@@ -10,7 +10,9 @@ function getDashboardData() {
   const todayIncome = q.get(`
     SELECT COALESCE(SUM(p.amount),0) as total
     FROM payments p
-    WHERE date(p.paid_at,'localtime') = date('now','localtime')
+    JOIN orders o ON o.id = p.order_id
+    WHERE o.status = 'completed'
+      AND date(p.paid_at,'localtime') = date('now','localtime')
   `).total;
 
   const todayOrders = q.get(`
@@ -56,7 +58,9 @@ function getDashboardData() {
     const row = q.get(`
       SELECT COALESCE(SUM(p.amount),0) as total
       FROM payments p
-      WHERE date(p.paid_at,'localtime') = date('now','localtime','-${i} days')
+      JOIN orders o ON o.id = p.order_id
+      WHERE o.status = 'completed'
+        AND date(p.paid_at,'localtime') = date('now','localtime','-${i} days')
     `);
     last7.push({ day: i, total: row.total });
   }
@@ -127,8 +131,11 @@ router.get('/', requireAuth, (req, res) => {
 
   // ── REPORTS INDEX ──
   const monthRevenue = q.get(`
-    SELECT COALESCE(SUM(p.amount),0) as total FROM payments p
-    WHERE strftime('%Y-%m', p.paid_at,'localtime') = strftime('%Y-%m','now','localtime')
+    SELECT COALESCE(SUM(p.amount),0) as total
+    FROM payments p
+    JOIN orders o ON o.id = p.order_id
+    WHERE o.status = 'completed'
+      AND strftime('%Y-%m', p.paid_at,'localtime') = strftime('%Y-%m','now','localtime')
   `).total;
 
   const monthExpense = q.get(`
@@ -156,7 +163,9 @@ router.get('/revenue', requireAuth, (req, res) => {
       SELECT date(p.paid_at,'localtime') as label,
              COALESCE(SUM(p.amount),0)   as total
       FROM payments p
-      WHERE p.paid_at >= date('now','localtime','-29 days')
+      JOIN orders o ON o.id = p.order_id
+      WHERE o.status = 'completed'
+        AND p.paid_at >= date('now','localtime','-29 days')
       GROUP BY label ORDER BY label
     `);
   } else if (period === 'week') {
@@ -164,7 +173,9 @@ router.get('/revenue', requireAuth, (req, res) => {
       SELECT date(p.paid_at,'localtime') as label,
              COALESCE(SUM(p.amount),0)   as total
       FROM payments p
-      WHERE p.paid_at >= date('now','localtime','-6 days')
+      JOIN orders o ON o.id = p.order_id
+      WHERE o.status = 'completed'
+        AND p.paid_at >= date('now','localtime','-6 days')
       GROUP BY label ORDER BY label
     `);
   } else {
@@ -172,7 +183,9 @@ router.get('/revenue', requireAuth, (req, res) => {
       SELECT strftime('%H:00', p.paid_at,'localtime') as label,
              COALESCE(SUM(p.amount),0)                as total
       FROM payments p
-      WHERE date(p.paid_at,'localtime') = ?
+      JOIN orders o ON o.id = p.order_id
+      WHERE o.status = 'completed'
+        AND date(p.paid_at,'localtime') = ?
       GROUP BY label ORDER BY label
     `, date);
   }
@@ -232,7 +245,9 @@ router.get('/finance', requireAuth, (req, res) => {
   const income = q.get(`
     SELECT COALESCE(SUM(p.amount),0) as total
     FROM payments p
-    WHERE strftime('%Y-%m', p.paid_at,'localtime') = ?
+    JOIN orders o ON o.id = p.order_id
+    WHERE o.status = 'completed'
+      AND strftime('%Y-%m', p.paid_at,'localtime') = ?
   `, month).total;
 
   const expByCategory = q.all(`

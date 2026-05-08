@@ -207,6 +207,16 @@ router.post('/:id/cancel', requireAdminOrCashier, (req, res) => {
     res.flash('error', 'Không tìm thấy order');
     return res.redirect('/orders');
   }
+  // Không cho huỷ order đã thanh toán — payments + transactions income sẽ
+  // mồ côi và làm sai doanh thu. Nếu cần hoàn tiền phải xử lý nghiệp vụ riêng.
+  if (order.status === 'completed') {
+    res.flash('error', 'Không thể huỷ hóa đơn đã thanh toán.');
+    return res.redirect('/orders/' + id);
+  }
+  if (order.status === 'cancelled') {
+    res.flash('error', 'Hóa đơn đã ở trạng thái huỷ.');
+    return res.redirect('/orders/' + id);
+  }
   q.run(
     `UPDATE orders SET status = 'cancelled', updated_at = datetime('now','localtime') WHERE id = ?`,
     id
