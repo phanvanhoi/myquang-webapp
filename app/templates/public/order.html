@@ -16,7 +16,7 @@
 {% block content %}
 <script>
   const _menuItems = {{ items | tojson | safe }};
-  const _restaurantName = {{ (settings.restaurant_name or 'MyQuang') | tojson }};
+  const _restaurantName = {{ (settings.restaurant_name or 'MyQuang') | tojson | safe }};
 </script>
 
 <div x-data="publicOrder(_menuItems)" x-init="init()" class="pb-24">

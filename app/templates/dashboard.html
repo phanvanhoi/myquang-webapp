@@ -169,10 +169,10 @@
     new Chart(ctx.getContext('2d'), {
       type: 'bar',
       data: {
-        labels: {{ chart_labels | tojson }},
+        labels: {{ chart_labels | tojson | safe }},
         datasets: [{
           label: 'Doanh thu (đ)',
-          data: {{ chart_data | tojson }},
+          data: {{ chart_data | tojson | safe }},
           backgroundColor: 'rgba(245,158,11,0.7)',
           borderColor: '#d97706',
           borderWidth: 1,
