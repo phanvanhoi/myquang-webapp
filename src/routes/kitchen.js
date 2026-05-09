@@ -5,6 +5,10 @@ const { requireAuth } = require('../middleware/auth');
 
 router.use(requireAuth);
 
+// Blacklist thay vì whitelist: cho phép cả order 'completed' lọt qua nếu vẫn
+// còn items pending/preparing — đề phòng case khách thanh toán nhanh trước
+// khi KDS kịp poll (mất 10s) khiến món bị bỏ sót. Vẫn loại 'cancelled' và
+// 'merged' để không hiện món của order đã đóng/đã gộp.
 const SQL_KITCHEN_ITEMS = `
   SELECT oi.id, oi.quantity, oi.note, oi.created_at,
          mi.name AS item_name,
@@ -18,7 +22,7 @@ const SQL_KITCHEN_ITEMS = `
   LEFT JOIN floors f ON f.id = t.floor_id
   LEFT JOIN rooms  r ON r.id = t.room_id
   WHERE oi.status IN ('pending', 'preparing')
-    AND o.status IN ('open', 'serving')
+    AND o.status NOT IN ('cancelled', 'merged')
   ORDER BY oi.created_at ASC
 `;
 

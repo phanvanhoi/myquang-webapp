@@ -234,14 +234,24 @@ router.post('/:id/cancel', requireAdminOrCashier, (req, res) => {
     res.flash('error', 'Hóa đơn đã ở trạng thái huỷ.');
     return res.redirect(posUrlFor(order));
   }
-  q.run(
-    `UPDATE orders SET status = 'cancelled', updated_at = datetime('now','localtime') WHERE id = ?`,
-    id
-  );
-  q.run(
-    `UPDATE tables SET status = 'available', updated_at = datetime('now','localtime') WHERE id = ?`,
-    order.table_id
-  );
+  // Cascade huỷ items để KDS không treo món pending mồ côi
+  // (đồng bộ với pattern ở tables.js close + takeaway.js cancel).
+  q.transaction(() => {
+    q.run(
+      `UPDATE order_items
+       SET status = 'cancelled', updated_at = datetime('now','localtime')
+       WHERE order_id = ? AND status != 'cancelled'`,
+      id
+    );
+    q.run(
+      `UPDATE orders SET status = 'cancelled', updated_at = datetime('now','localtime') WHERE id = ?`,
+      id
+    );
+    q.run(
+      `UPDATE tables SET status = 'available', updated_at = datetime('now','localtime') WHERE id = ?`,
+      order.table_id
+    );
+  })();
   res.flash('success', 'Đã huỷ order');
   res.redirect('/tables');
 });
