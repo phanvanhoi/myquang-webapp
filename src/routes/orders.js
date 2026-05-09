@@ -195,6 +195,30 @@ router.post('/:id/items/:itemId/qty', requireAdminOrCashier, (req, res) => {
   return res.json({ success: true, quantity, subtotal });
 });
 
+// POST /:id/items/:itemId/note — Sửa ghi chú món (cho cả món đã gửi bếp)
+router.post('/:id/items/:itemId/note', requireAuth, (req, res) => {
+  const { id, itemId } = req.params;
+  const note = (req.body.note || '').toString().trim().slice(0, 200) || null;
+
+  const order = q.get(`SELECT status FROM orders WHERE id = ?`, id);
+  if (!order) {
+    return res.status(404).json({ success: false, error: 'Không tìm thấy order' });
+  }
+  if (!['open', 'serving'].includes(order.status)) {
+    return res.status(400).json({
+      success: false,
+      error: `Không thể sửa ghi chú: order đã ở trạng thái "${order.status}".`,
+    });
+  }
+
+  q.run(
+    `UPDATE order_items SET note = ?, updated_at = datetime('now','localtime')
+     WHERE id = ? AND order_id = ?`,
+    note, itemId, id
+  );
+  return res.json({ success: true, note });
+});
+
 // POST /:id/send-to-kitchen — Gửi bếp (pending → preparing)
 router.post('/:id/send-to-kitchen', requireAuth, (req, res) => {
   const { id } = req.params;

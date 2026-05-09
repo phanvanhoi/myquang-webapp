@@ -13,9 +13,12 @@
     <div class="text-sm font-medium text-gray-700 truncate">
       {{ item.menu_item.name if item.menu_item else item.item_name }}
     </div>
-    {% if item.note %}
-    <div class="text-xs text-amber-600 italic truncate">{{ item.note }}</div>
-    {% endif %}
+    <input type="text" value="{{ item.note or '' }}"
+           maxlength="200"
+           placeholder="Ghi chú..."
+           onblur="serverItemNote({{ order.id }}, {{ item.id }}, this)"
+           onkeydown="if (event.key === 'Enter') this.blur()"
+           class="mt-0.5 w-full h-6 text-xs px-2 rounded border border-gray-200 focus:outline-none focus:ring-1 focus:ring-amber-400 text-amber-600 italic" />
   </div>
 
   {% if canEdit and item.status == 'pending' %}

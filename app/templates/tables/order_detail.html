@@ -618,6 +618,27 @@ async function serverItemCancel(orderId, itemId, name) {
   }
 }
 
+// Lưu note đã sửa cho 1 món đã gửi bếp. el là <input>.
+async function serverItemNote(orderId, itemId, el) {
+  const note = el.value;
+  el.disabled = true;
+  try {
+    const resp = await fetch(`/orders/${orderId}/items/${itemId}/note`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note }),
+    });
+    const data = await resp.json();
+    if (!data.success) {
+      alert(data.error || 'Không thể lưu ghi chú');
+    }
+  } catch (e) {
+    alert('Lỗi kết nối, thử lại');
+  } finally {
+    el.disabled = false;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
 document.addEventListener('alpine:mutated', () => lucide.createIcons());
 </script>
