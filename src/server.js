@@ -6,6 +6,16 @@ const path = require('path');
 const { seed } = require('./seed');
 const { q } = require('./db');
 
+// ── Process-level safety net ──
+// Node ≥15 kills process on unhandled rejection by default. Log + survive
+// thay vì để container restart loop khi 1 route lỡ throw không catch.
+process.on('unhandledRejection', (err) => {
+  console.error('[unhandledRejection]', err);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+});
+
 // ── Seed on startup ──
 seed();
 
@@ -103,6 +113,31 @@ app.use((req, res) => {
   res.status(404).render('error.html', {
     message: `Không tìm thấy trang: ${req.path}`
   });
+});
+
+// ── Global error handler ──
+// Bắt mọi exception bubble lên từ route/middleware. Không có nó, Express
+// chỉ in stack ra stdout và trả 500 text/html mặc định; với async handler
+// throw không catch, response có thể không bao giờ gửi → request hang.
+app.use((err, req, res, next) => {
+  console.error('[express-error]', err);
+  if (res.headersSent) return next(err);
+  // Defensive: nếu lỗi fire trước locals middleware, session/settings có
+  // thể chưa set → base.html render fail. Set fallback tối thiểu.
+  res.locals.session = res.locals.session || req.session || {};
+  res.locals.settings = res.locals.settings || {};
+  res.locals.flash = res.locals.flash || [];
+  res.locals.currentPath = res.locals.currentPath || req.path;
+  res.locals.query = res.locals.query || req.query || {};
+  const wantsJson = req.is('application/json') || (req.get('accept') || '').includes('application/json');
+  if (wantsJson) {
+    return res.status(500).json({ success: false, error: 'Đã có lỗi xảy ra.' });
+  }
+  try {
+    return res.status(500).render('error.html', { message: 'Đã có lỗi xảy ra. Vui lòng thử lại.' });
+  } catch (_) {
+    return res.status(500).send('Đã có lỗi xảy ra.');
+  }
 });
 
 // ── Start ──
