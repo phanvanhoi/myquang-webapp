@@ -80,9 +80,11 @@
   </div>
 
   <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+    {% if session.role != 'waiter' %}
     <a href="/dashboard" class="sidebar-link {{ 'active' if currentPath == '/dashboard' }}">
       <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
     </a>
+    {% endif %}
     <a href="/tables" class="sidebar-link {{ 'active' if currentPath| startsWith('/tables') }}">
       <i data-lucide="grid-2x2" class="w-4 h-4"></i> Sơ đồ bàn
     </a>
@@ -100,12 +102,14 @@
       <i data-lucide="receipt" class="w-4 h-4"></i> Hóa đơn
     </a>
     {% endif %}
+    {% if session.role != 'waiter' %}
     <a href="/finance" class="sidebar-link {{ 'active' if currentPath| startsWith('/finance') }}">
       <i data-lucide="wallet" class="w-4 h-4"></i> Thu Chi
     </a>
     <a href="/reports" class="sidebar-link {{ 'active' if currentPath| startsWith('/reports') }}">
       <i data-lucide="bar-chart-2" class="w-4 h-4"></i> Báo cáo
     </a>
+    {% endif %}
     {% if session.role == 'admin' %}
     <div class="pt-3 pb-1 px-4 text-xs text-amber-400 uppercase tracking-wider">Quản trị</div>
     <a href="/settings" class="sidebar-link {{ 'active' if currentPath| startsWith('/settings') }}">

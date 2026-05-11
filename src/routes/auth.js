@@ -3,10 +3,16 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { q } = require('../db');
 
+// Waiter không thấy menu Dashboard/Báo cáo/Thu Chi → đẩy thẳng vào /tables
+// sau login thay vì /dashboard (đỡ trang trống/khó hiểu).
+function landingFor(role) {
+  return role === 'waiter' ? '/tables' : '/dashboard';
+}
+
 // GET / → redirect based on login state
 router.get('/', (req, res) => {
   if (req.session && req.session.userId) {
-    return res.redirect('/dashboard');
+    return res.redirect(landingFor(req.session.role));
   }
   res.redirect('/login');
 });
@@ -14,7 +20,7 @@ router.get('/', (req, res) => {
 // GET /login → render login page
 router.get('/login', (req, res) => {
   if (req.session && req.session.userId) {
-    return res.redirect('/dashboard');
+    return res.redirect(landingFor(req.session.role));
   }
   res.render('login.html', { error: req.query.error || null });
 });
@@ -54,7 +60,7 @@ router.post('/login', (req, res) => {
     user.id
   );
 
-  res.redirect('/dashboard');
+  res.redirect(landingFor(user.role));
 });
 
 // GET /logout → destroy session and redirect login
