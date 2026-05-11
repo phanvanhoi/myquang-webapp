@@ -534,11 +534,17 @@ function posOrder(menuItems, orderId, serverItemCount, existingTotal) {
       const payload = this.cart.map(e => ({
         item_id: e.item_id, quantity: e.qty, note: e.note || '',
       }));
+      // Timeout 15s: chống spinner xoay mãi khi response bị mất giữa đường
+      // (mạng chập chờn, container restart). Không retry tự động — reload để
+      // user thấy trạng thái thực, tránh duplicate insert khi server đã ghi.
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
       try {
         const resp = await fetch(`/orders/${this.orderId}/add-items`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ items: payload }),
+          signal: controller.signal,
         });
         const data = await resp.json();
         if (!data.success) {
@@ -547,8 +553,15 @@ function posOrder(menuItems, orderId, serverItemCount, existingTotal) {
         }
         return { ok: true, data };
       } catch (e) {
+        if (e.name === 'AbortError') {
+          alert('Mạng chậm hoặc mất kết nối. Trang sẽ tải lại để kiểm tra món đã gửi chưa.');
+          window.location.reload();
+          return { ok: false };
+        }
         alert('Lỗi kết nối. Vui lòng thử lại.');
         return { ok: false };
+      } finally {
+        clearTimeout(timer);
       }
     },
 
