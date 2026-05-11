@@ -11,6 +11,7 @@
     "bcryptjs": "^2.4.3",
     "express": "^4.22.1",
     "express-session": "^1.19.0",
+    "memorystore": "^1.6.8",
     "node-sqlite3-wasm": "^0.8.56",
     "nunjucks": "^3.2.4"
   }

@@ -1,5 +1,6 @@
 const express = require('express');
 const session = require('express-session');
+const MemoryStore = require('memorystore')(session);
 const nunjucks = require('nunjucks');
 const path = require('path');
 
@@ -60,6 +61,13 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'app', 'static')));
 
 app.use(session({
+  // Default MemoryStore không evict expired sessions → leak RAM theo thời
+  // gian (mỗi tab POS, mỗi bot hit /order public tạo 1 session 4h trong
+  // RAM). memorystore evict TTL nên RAM bounded. Vẫn in-memory (mất khi
+  // restart, staff phải login lại) — giữ nguyên hành vi cũ, chỉ chặn leak.
+  store: new MemoryStore({
+    checkPeriod: 60 * 60 * 1000, // sweep mỗi giờ
+  }),
   secret: process.env.SECRET_KEY || 'myquang-secret-2026',
   resave: false,
   saveUninitialized: false,
