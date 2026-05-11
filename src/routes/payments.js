@@ -152,8 +152,10 @@ router.get('/history', requireAdminOrCashier, (req, res) => {
 
 // ─────────────────────────────────────────────
 // GET /payments/:orderId — trang thanh toán checkout
+// Waiter được vào nhưng UI sẽ chỉ cho phép chuyển khoản (tiền mặt phải
+// qua thu ngân vì waiter không cầm két).
 // ─────────────────────────────────────────────
-router.get('/:orderId', requireAdminOrCashier, (req, res) => {
+router.get('/:orderId', requireAuth, (req, res) => {
   const orderId = parseInt(req.params.orderId);
 
   const order = q.get(
@@ -209,13 +211,22 @@ router.get('/:orderId', requireAdminOrCashier, (req, res) => {
 // ─────────────────────────────────────────────
 // POST /payments/:orderId/confirm — xác nhận thanh toán
 // ─────────────────────────────────────────────
-router.post('/:orderId/confirm', requireAdminOrCashier, (req, res) => {
+router.post('/:orderId/confirm', requireAuth, (req, res) => {
   const orderId = parseInt(req.params.orderId);
 
   const discountAmount = parseFloat(req.body.discount_amount) || 0;
   const discountReason = (req.body.discount_reason || '').trim();
   const cashAmount     = parseFloat(req.body.cash_amount)     || 0;
   const transferAmount = parseFloat(req.body.transfer_amount) || 0;
+
+  // Waiter chỉ được ghi nhận chuyển khoản. Tiền mặt phải do thu ngân/admin
+  // xác nhận (waiter không cầm két). Defense-in-depth: dù UI ẩn nút cash,
+  // chặn ở backend phòng request giả mạo.
+  const isWaiter = req.session.role === 'waiter';
+  if (isWaiter && cashAmount > 0) {
+    res.flash('error', 'Phục vụ chỉ được xác nhận thanh toán chuyển khoản. Tiền mặt phải qua thu ngân.');
+    return res.redirect(`/payments/${orderId}`);
+  }
 
   try {
     const doPayment = q.transaction(() => {

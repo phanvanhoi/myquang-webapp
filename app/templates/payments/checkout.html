@@ -4,10 +4,11 @@
 {% block page_title %}Thanh toán — Bàn {{ order.table.name }}{% endblock %}
 
 {% block content %}
+{% set isWaiter = session.role == 'waiter' %}
 <div
   x-data="{
     subtotal: {{ order.total_amount }},
-    payMode: 'cash',
+    payMode: '{{ 'transfer' if isWaiter else 'cash' }}',
     cashGiven: 0,
     transferAmount: 0,
     bankAccount: {{ (settings.bank_account or '') | tojson }},
@@ -116,6 +117,16 @@
         <div class="flex-1 px-6 py-5 space-y-5">
 
           <!-- Toggle phương thức -->
+          {% if isWaiter %}
+          {# Phục vụ chỉ được xác nhận chuyển khoản — không hiển thị toggle. #}
+          <div class="flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-blue-500 bg-blue-50 text-blue-700 text-sm font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+            </svg>
+            Chuyển khoản
+            <span class="ml-auto text-xs text-blue-500">Tiền mặt: nhờ thu ngân</span>
+          </div>
+          {% else %}
           <div class="grid grid-cols-3 gap-2">
             <button
               type="button"
@@ -159,6 +170,7 @@
               Kết hợp
             </button>
           </div>
+          {% endif %}
 
           <!-- ── TIỀN MẶT ── -->
           <div x-show="payMode === 'cash'" class="space-y-4">
