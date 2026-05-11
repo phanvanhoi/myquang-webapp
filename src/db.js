@@ -209,6 +209,22 @@ CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(occurred_at);
 `);
 
+// ── Idempotent column ensures ──
+// SQLite không có "ADD COLUMN IF NOT EXISTS". Trước đây các cột này được
+// thêm bằng migrate-public-order.js chạy thủ công sau deploy. Volume mới
+// mà quên migrate → mọi query `SELECT ... customer_address` 500. Đảm bảo
+// cột tồn tại ngay khi boot để không phụ thuộc bước migration ngoài.
+function ensureColumn(table, column, decl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all([]).map(r => r.name);
+  if (!cols.includes(column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${decl}`);
+  }
+}
+ensureColumn('orders', 'customer_name',    'TEXT');
+ensureColumn('orders', 'customer_phone',   'TEXT');
+ensureColumn('orders', 'customer_address', 'TEXT');
+ensureColumn('orders', 'customer_note',    'TEXT');
+
 // ── Helper query functions ──
 
 const q = {
