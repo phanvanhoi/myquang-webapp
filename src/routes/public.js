@@ -6,6 +6,17 @@ const { q } = require('../db');
 const RATE_LIMIT_MS = 5 * 60 * 1000;
 const lastOrderByPhone = new Map();
 
+// Endpoint public không auth: bot/scraper enumerate số điện thoại có thể
+// phình Map vô hạn → OOM chậm. Sweep mỗi phút, xóa entry đã quá rate-limit
+// window (không còn ý nghĩa với việc check rate-limit nữa). `.unref()` để
+// interval không giữ event loop khi process muốn exit.
+setInterval(() => {
+  const now = Date.now();
+  for (const [phone, t] of lastOrderByPhone) {
+    if (now - t > RATE_LIMIT_MS) lastOrderByPhone.delete(phone);
+  }
+}, 60 * 1000).unref();
+
 const PHONE_RE = /^0[1-9]\d{8,9}$/;
 
 function getDeliverySentinels() {
