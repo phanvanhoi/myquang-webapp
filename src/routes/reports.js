@@ -28,9 +28,15 @@ function getDashboardData() {
       )
   `).cnt;
 
-  const occupiedTables = q.get(
-    `SELECT COUNT(*) as cnt FROM tables WHERE status='occupied'`
-  ).cnt;
+  // Một bàn chỉ tính là "đang có khách" khi có order open/serving với
+  // ít nhất 1 món chưa huỷ. Bàn đã bấm mở nhưng chưa gọi món → không tính.
+  const occupiedTables = q.get(`
+    SELECT COUNT(DISTINCT t.id) as cnt
+    FROM tables t
+    JOIN orders o ON o.table_id = t.id AND o.status IN ('open','serving')
+    JOIN order_items oi ON oi.order_id = o.id AND oi.status != 'cancelled'
+    WHERE t.is_active = 1
+  `).cnt;
 
   const totalTables = q.get(
     `SELECT COUNT(*) as cnt FROM tables WHERE is_active=1`
@@ -79,16 +85,26 @@ function getDashboardData() {
   });
   const chartData = last7.map(r => r.total);
 
-  // Sơ đồ bàn mini — gom theo tầng
+  // Sơ đồ bàn mini — gom theo tầng. Override status: bàn có status='occupied'
+  // nhưng order chưa có món thực sự (mở nhưng chưa gọi) → hiển thị 'available'
+  // cho khớp với counter "Bàn đang có khách" ở trên.
   const floors = q.all(`SELECT * FROM floors WHERE is_active=1 ORDER BY sort_order`);
   const allTables = q.all(`
-    SELECT t.*, f.name as floor_name, r.name as room_name
+    SELECT t.*, f.name as floor_name, r.name as room_name,
+           EXISTS (
+             SELECT 1 FROM orders o
+             JOIN order_items oi ON oi.order_id = o.id AND oi.status != 'cancelled'
+             WHERE o.table_id = t.id AND o.status IN ('open','serving')
+           ) AS has_active_items
     FROM tables t
     JOIN floors f ON f.id = t.floor_id
     LEFT JOIN rooms r ON r.id = t.room_id
     WHERE t.is_active=1
     ORDER BY f.sort_order, t.id
   `);
+  for (const t of allTables) {
+    if (t.status === 'occupied' && !t.has_active_items) t.status = 'available';
+  }
 
   // floors_map: array of { id, name, tables[] } for template iteration
   const floorsMap = floors.map(f => ({
