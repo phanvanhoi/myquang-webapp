@@ -15,9 +15,17 @@ function getDashboardData() {
       AND date(p.paid_at) = date('now','localtime')
   `).total;
 
+  // Đếm hóa đơn hôm nay, loại order completed mà không có món nào active
+  // (vd. tất cả món đã bị huỷ, hoặc completed sai luồng) — đồng nhất với
+  // /orders list (lọc HAVING item_count > 0).
   const todayOrders = q.get(`
-    SELECT COUNT(*) as cnt FROM orders
-    WHERE date(updated_at) = date('now','localtime') AND status='completed'
+    SELECT COUNT(*) as cnt FROM orders o
+    WHERE date(o.updated_at) = date('now','localtime')
+      AND o.status = 'completed'
+      AND EXISTS (
+        SELECT 1 FROM order_items oi
+        WHERE oi.order_id = o.id AND oi.status != 'cancelled'
+      )
   `).cnt;
 
   const occupiedTables = q.get(
