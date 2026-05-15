@@ -3,6 +3,12 @@ const router = express.Router();
 const { q } = require('../db');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 
+// LƯU Ý: trước đây có 3 route admin sửa/xoá khoản chi
+// (GET/POST /expenses/:id/edit, POST /expenses/:id/delete) — đã gỡ theo
+// quyết định nghiệp vụ: khoản chi đã ghi nhận là immutable, sai thì
+// ghi nhận khoản đối ứng mới chứ không sửa lịch sử. Nếu cần escape
+// hatch, làm trực tiếp DB qua docker exec.
+
 // ─────────────────────────────────────────────
 // GET /finance — tổng quan thu chi
 // ─────────────────────────────────────────────
@@ -43,21 +49,42 @@ router.get('/', requireAuth, (req, res) => {
     selectedMonth
   );
 
+  // Khoản thu theo tháng — từng payment của các order completed.
+  // Dùng paid_at thay vì orders.updated_at để không bị nhảy ngày khi
+  // hoá đơn được sửa (gặp gotcha với ORD-20260513-023).
+  const incomes = q.all(
+    `SELECT p.id AS payment_id, p.amount, p.paid_at,
+            pm.name AS method_name,
+            o.id AS order_id, o.order_code,
+            t.name AS table_name
+     FROM payments p
+     JOIN orders o ON o.id = p.order_id
+     JOIN tables t ON t.id = o.table_id
+     JOIN payment_methods pm ON pm.id = p.method_id
+     WHERE o.status = 'completed'
+       AND strftime('%Y-%m', p.paid_at) = ?
+     ORDER BY p.paid_at DESC`,
+    selectedMonth
+  );
+
   // Danh mục chi phí đang hoạt động
   const categories = q.all(
     `SELECT * FROM expense_categories WHERE is_active = 1 ORDER BY name`
   );
 
   const total_expense = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const total_income  = incomes.reduce((sum, i) => sum + (i.amount  || 0), 0);
 
   res.render('finance/index.html', {
     todayIncome,
     todayExpense,
     profit,
     expenses,
+    incomes,
     categories,
     selectedMonth,
     total_expense,
+    total_income,
     // Aliases cho template cũ (nếu template dùng tên khác)
     total_income_today:   todayIncome,
     total_expense_today:  todayExpense,
@@ -107,80 +134,6 @@ router.post('/expenses', requireAuth, (req, res) => {
     res.flash('error', err.message || 'Có lỗi khi ghi nhận khoản chi.');
   }
 
-  res.redirect('/finance');
-});
-
-// ─────────────────────────────────────────────
-// GET /finance/expenses/:id/edit — form sửa khoản chi
-// ─────────────────────────────────────────────
-router.get('/expenses/:id/edit', requireAdmin, (req, res) => {
-  const expenseId = parseInt(req.params.id);
-
-  const expense = q.get(
-    `SELECT e.*, ec.name AS category_name
-     FROM expenses e
-     JOIN expense_categories ec ON ec.id = e.category_id
-     WHERE e.id = ?`,
-    expenseId
-  );
-  if (!expense) {
-    res.flash('error', 'Không tìm thấy khoản chi.');
-    return res.redirect('/finance');
-  }
-
-  const categories = q.all(
-    `SELECT * FROM expense_categories WHERE is_active = 1 ORDER BY name`
-  );
-
-  res.render('finance/edit_expense.html', { expense, categories });
-});
-
-// ─────────────────────────────────────────────
-// POST /finance/expenses/:id/edit — lưu sửa khoản chi
-// ─────────────────────────────────────────────
-router.post('/expenses/:id/edit', requireAdmin, (req, res) => {
-  const expenseId   = parseInt(req.params.id);
-  const categoryId  = parseInt(req.body.category_id);
-  const amount      = parseFloat(req.body.amount);
-  const description = (req.body.description || '').trim();
-  const occurredAt  = req.body.occurred_at || '';
-
-  if (!categoryId || !amount || amount <= 0 || !description || !occurredAt) {
-    res.flash('error', 'Vui lòng điền đầy đủ thông tin.');
-    return res.redirect(`/finance/expenses/${expenseId}/edit`);
-  }
-
-  q.run(
-    `UPDATE expenses
-     SET category_id = ?, amount = ?, description = ?, occurred_at = ?,
-         updated_at = datetime('now', 'localtime')
-     WHERE id = ?`,
-    categoryId, amount, description, occurredAt, expenseId
-  );
-
-  res.flash('success', 'Đã cập nhật khoản chi.');
-  res.redirect('/finance');
-});
-
-// ─────────────────────────────────────────────
-// POST /finance/expenses/:id/delete — xóa khoản chi
-// ─────────────────────────────────────────────
-router.post('/expenses/:id/delete', requireAdmin, (req, res) => {
-  const expenseId = parseInt(req.params.id);
-
-  const expense = q.get(`SELECT * FROM expenses WHERE id = ?`, expenseId);
-  if (!expense) {
-    res.flash('error', 'Không tìm thấy khoản chi.');
-    return res.redirect('/finance');
-  }
-
-  q.run(`DELETE FROM expenses WHERE id = ?`, expenseId);
-  q.run(
-    `DELETE FROM transactions WHERE reference_id = ? AND reference_type = 'expense'`,
-    expenseId
-  );
-
-  res.flash('success', 'Đã xóa khoản chi.');
   res.redirect('/finance');
 });
 
