@@ -311,4 +311,80 @@ router.get('/finance', requireAuth, (req, res) => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────
+// GET /profit-trend → so sánh thu/chi/lợi nhuận theo Tháng / Quý / Năm
+// Trả về danh sách N kỳ gần nhất (mặc định month=12, quarter=8, year=5)
+// đã fill 0 cho kỳ không có dữ liệu để chart liền mạch.
+// ─────────────────────────────────────────────────────────────
+router.get('/profit-trend', requireAuth, (req, res) => {
+  const period = req.query.period === 'year' ? 'year'
+               : req.query.period === 'quarter' ? 'quarter'
+               : 'month';
+
+  // Sinh danh sách kỳ mục tiêu (cũ → mới)
+  const now = new Date();
+  const periods = [];
+  if (period === 'month') {
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const y = d.getFullYear(), m = d.getMonth() + 1;
+      periods.push({ key: `${y}-${String(m).padStart(2, '0')}`, label: `T${m}/${String(y).slice(2)}` });
+    }
+  } else if (period === 'quarter') {
+    const curQ = Math.floor(now.getMonth() / 3) + 1;
+    for (let i = 7; i >= 0; i--) {
+      let q = curQ - i, y = now.getFullYear();
+      while (q <= 0) { q += 4; y--; }
+      periods.push({ key: `${y}-Q${q}`, label: `Q${q}/${String(y).slice(2)}` });
+    }
+  } else { // year
+    for (let i = 4; i >= 0; i--) {
+      const y = now.getFullYear() - i;
+      periods.push({ key: String(y), label: String(y) });
+    }
+  }
+
+  // Expression group-by tương ứng cho SQLite
+  const keyExpr = (col) => {
+    if (period === 'month')   return `strftime('%Y-%m', ${col})`;
+    if (period === 'year')    return `strftime('%Y', ${col})`;
+    return `strftime('%Y', ${col}) || '-Q' || ((CAST(strftime('%m', ${col}) AS INTEGER) + 2) / 3)`;
+  };
+
+  const incomeRows = q.all(
+    `SELECT ${keyExpr('p.paid_at')} AS k, COALESCE(SUM(p.amount), 0) AS total
+     FROM payments p
+     JOIN orders o ON o.id = p.order_id
+     WHERE o.status = 'completed'
+     GROUP BY k`
+  );
+  const expenseRows = q.all(
+    `SELECT ${keyExpr('occurred_at')} AS k, COALESCE(SUM(amount), 0) AS total
+     FROM expenses
+     GROUP BY k`
+  );
+
+  const incomeBy  = Object.fromEntries(incomeRows.map(r => [r.k, r.total]));
+  const expenseBy = Object.fromEntries(expenseRows.map(r => [r.k, r.total]));
+
+  const rows = periods.map(p => {
+    const income  = incomeBy[p.key]  || 0;
+    const expense = expenseBy[p.key] || 0;
+    const profit  = income - expense;
+    return {
+      key: p.key, label: p.label,
+      income, expense, profit,
+      margin: income > 0 ? +((profit / income) * 100).toFixed(1) : 0,
+    };
+  });
+
+  const totals = rows.reduce((acc, r) => ({
+    income:  acc.income  + r.income,
+    expense: acc.expense + r.expense,
+    profit:  acc.profit  + r.profit,
+  }), { income: 0, expense: 0, profit: 0 });
+
+  res.json({ period, rows, totals });
+});
+
 module.exports = router;
