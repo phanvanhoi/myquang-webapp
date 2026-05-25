@@ -2,12 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { q } = require('../db');
 const { requireAuth, requireAdminOrCashier } = require('../middleware/auth');
-
-const MONEY_EPS = 0.01;
-
-function roundMoney(n) {
-  return Math.round(Number(n) * 100) / 100;
-}
+const {
+  roundMoney,
+  parsePaymentAmounts,
+  validatePaymentSubmission,
+} = require('../lib/money');
 
 // ─────────────────────────────────────────────
 // GET /payments/history — lịch sử hóa đơn (theo ngày / giai đoạn)
@@ -220,21 +219,14 @@ router.get('/:orderId', requireAuth, (req, res) => {
 router.post('/:orderId/confirm', requireAuth, (req, res) => {
   const orderId = parseInt(req.params.orderId);
 
-  // UI chưa có form giảm giá — bỏ qua body, tránh thao túng POST.
-  const discountAmount = 0;
-  const discountReason = '';
-  const cashAmount     = roundMoney(parseFloat(req.body.cash_amount)     || 0);
-  const transferAmount = roundMoney(parseFloat(req.body.transfer_amount) || 0);
+  const { discountAmount, discountReason, cashAmount, transferAmount } =
+    parsePaymentAmounts(req.body);
+  const isWaiter = req.session.role === 'waiter';
 
   if (cashAmount < 0 || transferAmount < 0) {
     res.flash('error', 'Số tiền thanh toán không hợp lệ.');
     return res.redirect(`/payments/${orderId}`);
   }
-
-  // Waiter chỉ được ghi nhận chuyển khoản. Tiền mặt phải do thu ngân/admin
-  // xác nhận (waiter không cầm két). Defense-in-depth: dù UI ẩn nút cash,
-  // chặn ở backend phòng request giả mạo.
-  const isWaiter = req.session.role === 'waiter';
   if (isWaiter && cashAmount > 0) {
     res.flash('error', 'Phục vụ chỉ được xác nhận thanh toán chuyển khoản. Tiền mặt phải qua thu ngân.');
     return res.redirect(`/payments/${orderId}`);
@@ -251,19 +243,14 @@ router.post('/:orderId/confirm', requireAuth, (req, res) => {
 
       // 2. Tính final_amount sau giảm giá
       const finalAmount = roundMoney(Math.max(0, order.total_amount - discountAmount));
-      const paidTotal   = roundMoney(cashAmount + transferAmount);
 
-      if (finalAmount > MONEY_EPS) {
-        if (paidTotal < MONEY_EPS) {
-          throw new Error('Chưa nhập số tiền thanh toán.');
-        }
-        if (Math.abs(paidTotal - finalAmount) > MONEY_EPS) {
-          throw new Error('Tổng tiền mặt + chuyển khoản phải bằng số tiền cần thanh toán.');
-        }
-        if (isWaiter && Math.abs(transferAmount - finalAmount) > MONEY_EPS) {
-          throw new Error('Phục vụ phải xác nhận chuyển khoản đúng số tiền cần thanh toán.');
-        }
-      }
+      const paymentError = validatePaymentSubmission({
+        cashAmount,
+        transferAmount,
+        finalAmount,
+        isWaiter,
+      });
+      if (paymentError) throw new Error(paymentError);
 
       q.run(
         `UPDATE orders

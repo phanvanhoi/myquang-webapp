@@ -7,7 +7,8 @@
     "start": "node src/server.js",
     "dev": "npx nodemon src/server.js",
     "test": "node --test test/*.test.js",
-    "audit:payments": "node scripts/audit-payments.js"
+    "audit:payments": "node scripts/audit-payments.js",
+    "deploy": "bash scripts/deploy.sh"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

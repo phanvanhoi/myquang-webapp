@@ -29,6 +29,10 @@ if (isProduction && !sessionSecret) {
 
 const app = express();
 
+if (process.env.TRUST_PROXY === '1') {
+  app.set('trust proxy', 1);
+}
+
 // ── Template engine: Nunjucks ──
 const env = nunjucks.configure(
   path.join(__dirname, '..', 'app', 'templates'),
@@ -78,7 +82,11 @@ app.use(session({
   secret: sessionSecret || 'myquang-secret-2026',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 4 * 60 * 60 * 1000 }, // 4 hours
+  cookie: {
+    maxAge: 4 * 60 * 60 * 1000, // 4 hours
+    sameSite: 'lax',
+    secure: process.env.COOKIE_SECURE === '1',
+  },
 }));
 
 // ── Global template locals ──

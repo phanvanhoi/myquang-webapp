@@ -127,6 +127,9 @@
             {{ item.quantity }} × {{ item.unit_price | currency }}
           </span>
         </div>
+        {% if item.note %}
+        <div class="text-xs text-gray-500 pl-0.5">({{ item.note }})</div>
+        {% endif %}
         <div class="text-right text-xs font-semibold">= {{ item.subtotal | currency }}</div>
       </div>
       {% endif %}
