@@ -255,7 +255,7 @@ router.post('/:id/send-to-kitchen', requireAuth, (req, res) => {
 router.post('/:id/mark-served', requireAuth, (req, res) => {
   const { id } = req.params;
   const order = q.get(
-    `SELECT id, table_id, order_type FROM orders WHERE id = ?`,
+    `SELECT id, table_id, order_type, status FROM orders WHERE id = ?`,
     id
   );
   if (!order) {

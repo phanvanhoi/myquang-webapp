@@ -5,6 +5,7 @@ const {
   weeksInRange,
   monthsInRange,
   reportPeriodMeta,
+  presetDateRange,
 } = require('../src/lib/date');
 const { buildNoodleStats } = require('../src/lib/noodle-stats');
 
@@ -53,6 +54,22 @@ test('buildNoodleStats computes qty and revenue averages', () => {
   assert.strictEqual(stats.bun.qty, 145);
   assert.strictEqual(stats.bun.avg_week, 29);
   assert.strictEqual(stats.bun.revenue_avg_month, 8700000);
+});
+
+test('presetDateRange returns week, month, and quarter windows', () => {
+  const ref = new Date(2026, 4, 25); // 2026-05-25
+  assert.deepStrictEqual(presetDateRange('week', ref), {
+    start: '2026-05-19',
+    end: '2026-05-25',
+  });
+  assert.deepStrictEqual(presetDateRange('month', ref), {
+    start: '2026-05-01',
+    end: '2026-05-25',
+  });
+  assert.deepStrictEqual(presetDateRange('quarter', ref), {
+    start: '2026-04-01',
+    end: '2026-05-25',
+  });
 });
 
 test('buildNoodleStats defaults missing groups to zero', () => {

@@ -72,6 +72,25 @@ function reportPeriodMeta(start, end) {
   };
 }
 
+/** Khoảng ngày nhanh: week = 7 ngày gần nhất, month/quarter = từ đầu kỳ lịch đến ref. */
+function presetDateRange(preset, ref = new Date()) {
+  const end = localYmd(ref);
+  const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+
+  if (preset === 'week') {
+    d.setDate(d.getDate() - 6);
+    return { start: localYmd(d), end };
+  }
+  if (preset === 'month') {
+    return { start: localYmd(new Date(d.getFullYear(), d.getMonth(), 1)), end };
+  }
+  if (preset === 'quarter') {
+    const qStart = Math.floor(d.getMonth() / 3) * 3;
+    return { start: localYmd(new Date(d.getFullYear(), qStart, 1)), end };
+  }
+  throw new Error(`Unknown preset: ${preset}`);
+}
+
 module.exports = {
   localYmd,
   localYmdCompact,
@@ -80,4 +99,5 @@ module.exports = {
   weeksInRange,
   monthsInRange,
   reportPeriodMeta,
+  presetDateRange,
 };
