@@ -71,6 +71,9 @@
       {% endif %}
 
       <form method="post" action="/login" class="space-y-5">
+        {% if csrfToken %}
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+        {% endif %}
 
         <!-- Username -->
         <div>

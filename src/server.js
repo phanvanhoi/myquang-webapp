@@ -109,6 +109,10 @@ app.use((req, res, next) => {
   next();
 });
 
+const { csrfTokenMiddleware, csrfProtect } = require('./middleware/csrf');
+app.use(csrfTokenMiddleware);
+app.use(csrfProtect);
+
 // ── Routes ──
 app.use('/',        require('./routes/auth'));
 app.use('/tables',  require('./routes/tables'));

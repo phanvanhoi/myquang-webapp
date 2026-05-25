@@ -356,6 +356,13 @@ router.get('/:orderId/receipt', requireAuth, (req, res) => {
     return res.redirect('/payments/history');
   }
 
+  if (order.status !== 'completed' && req.session.role !== 'admin') {
+    res.flash('error', 'Hóa đơn chỉ in được sau khi đã thanh toán.');
+    return res.redirect(order.status === 'open' || order.status === 'serving'
+      ? `/payments/${orderId}`
+      : '/payments/history');
+  }
+
   const rawItems = q.all(
     `SELECT oi.*, mi.name AS item_name
      FROM order_items oi
