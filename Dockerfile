@@ -15,6 +15,7 @@ RUN npm ci --omit=dev
 # Copy application source
 COPY src/ ./src/
 COPY app/ ./app/
+COPY scripts/ ./scripts/
 
 # Create data directory for SQLite database
 RUN mkdir -p /data
