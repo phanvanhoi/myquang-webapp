@@ -7,21 +7,27 @@ const {
   parsePaymentAmounts,
   validatePaymentSubmission,
 } = require('../lib/money');
+const { localYmd } = require('../lib/date');
 
-// ─────────────────────────────────────────────
-// GET /payments/history — lịch sử hóa đơn (theo ngày / giai đoạn)
-// ─────────────────────────────────────────────
-function ymd(d) {
-  // Local YYYY-MM-DD (tránh lệch UTC)
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+function recordPayment(orderId, methodName, amount) {
+  if (amount <= 0) return;
+  const method = q.get(
+    `SELECT id FROM payment_methods WHERE name = ? AND is_active = 1`,
+    methodName
+  );
+  if (!method) {
+    throw new Error(`Phương thức thanh toán "${methodName}" chưa được cấu hình.`);
+  }
+  q.run(
+    `INSERT INTO payments (order_id, method_id, amount, paid_at)
+     VALUES (?, ?, ?, datetime('now','localtime'))`,
+    orderId, method.id, amount
+  );
 }
 
 router.get('/history', requireAdminOrCashier, (req, res) => {
   const now = new Date();
-  const today = ymd(now);
+  const today = localYmd(now);
 
   // Backward compat: ?date_filter=YYYY-MM-DD hoặc ?date=...
   const legacy = req.query.date_filter || req.query.date;
@@ -135,20 +141,17 @@ router.get('/history', requireAdminOrCashier, (req, res) => {
 
   const presets = {
     today:     { start: today,             end: today,             label: 'Hôm nay' },
-    yesterday: { start: ymd(yest),         end: ymd(yest),         label: 'Hôm qua' },
-    last7:     { start: ymd(sixDaysAgo),   end: today,             label: '7 ngày' },
-    thisMonth: { start: ymd(monthStart),   end: today,             label: 'Tháng này' },
-    prevMonth: { start: ymd(prevMonthStart), end: ymd(prevMonthEnd), label: 'Tháng trước' },
+    yesterday: { start: localYmd(yest),         end: localYmd(yest),         label: 'Hôm qua' },
+    last7:     { start: localYmd(sixDaysAgo),   end: today,             label: '7 ngày' },
+    thisMonth: { start: localYmd(monthStart),   end: today,             label: 'Tháng này' },
+    prevMonth: { start: localYmd(prevMonthStart), end: localYmd(prevMonthEnd), label: 'Tháng trước' },
   };
 
   res.render('payments/history.html', {
     orders, cancelledOrders, mergedOrders, dailyBreakdown,
     start, end,
     isRange: start !== end,
-    totalRevenue, cashTotal, transferTotal,
     presets,
-    // Aliases cho template / link cũ
-    date_filter:    start,
     total_revenue:  totalRevenue,
     total_cash:     cashTotal,
     total_transfer: transferTotal,
@@ -190,13 +193,6 @@ router.get('/:orderId', requireAuth, (req, res) => {
     menu_item: { name: i.item_name },
   }));
 
-  const paymentMethods = q.all(
-    `SELECT * FROM payment_methods WHERE is_active = 1 ORDER BY id`
-  );
-
-  const settings = q.getSettings();
-
-  // Gán table và items vào order cho template dùng order.table.name
   order.table = {
     id:   order.table_id,
     name: order.table_name,
@@ -208,8 +204,6 @@ router.get('/:orderId', requireAuth, (req, res) => {
     order,
     items,
     table: order.table,
-    paymentMethods,
-    settings,
   });
 });
 
@@ -223,27 +217,21 @@ router.post('/:orderId/confirm', requireAuth, (req, res) => {
     parsePaymentAmounts(req.body);
   const isWaiter = req.session.role === 'waiter';
 
-  if (cashAmount < 0 || transferAmount < 0) {
-    res.flash('error', 'Số tiền thanh toán không hợp lệ.');
-    return res.redirect(`/payments/${orderId}`);
-  }
-  if (isWaiter && cashAmount > 0) {
-    res.flash('error', 'Phục vụ chỉ được xác nhận thanh toán chuyển khoản. Tiền mặt phải qua thu ngân.');
-    return res.redirect(`/payments/${orderId}`);
-  }
-
   try {
-    const doPayment = q.transaction(() => {
-      // 1. Lấy order, kiểm tra trạng thái
-      const order = q.get(`SELECT * FROM orders WHERE id = ?`, orderId);
+    q.transaction(() => {
+      const order = q.get(
+        `SELECT o.*, t.name AS table_name
+         FROM orders o
+         JOIN tables t ON t.id = o.table_id
+         WHERE o.id = ?`,
+        orderId
+      );
       if (!order) throw new Error('Không tìm thấy order.');
       if (!['open', 'serving'].includes(order.status)) {
         throw new Error(`Order đã ở trạng thái "${order.status}", không thể thanh toán.`);
       }
 
-      // 2. Tính final_amount sau giảm giá
       const finalAmount = roundMoney(Math.max(0, order.total_amount - discountAmount));
-
       const paymentError = validatePaymentSubmission({
         cashAmount,
         transferAmount,
@@ -260,51 +248,22 @@ router.post('/:orderId/confirm', requireAuth, (req, res) => {
         discountAmount, discountReason || null, finalAmount, orderId
       );
 
-      // 3. Ghi payments
-      if (cashAmount > 0) {
-        const cashMethod = q.get(
-          `SELECT id FROM payment_methods WHERE name = 'Tiền mặt' AND is_active = 1`
-        );
-        if (cashMethod) {
-          q.run(
-            `INSERT INTO payments (order_id, method_id, amount, paid_at)
-             VALUES (?, ?, ?, datetime('now','localtime'))`,
-            orderId, cashMethod.id, cashAmount
-          );
-        }
-      }
+      recordPayment(orderId, 'Tiền mặt', cashAmount);
+      recordPayment(orderId, 'Chuyển khoản', transferAmount);
 
-      if (transferAmount > 0) {
-        const transferMethod = q.get(
-          `SELECT id FROM payment_methods WHERE name = 'Chuyển khoản' AND is_active = 1`
-        );
-        if (transferMethod) {
-          q.run(
-            `INSERT INTO payments (order_id, method_id, amount, paid_at)
-             VALUES (?, ?, ?, datetime('now','localtime'))`,
-            orderId, transferMethod.id, transferAmount
-          );
-        }
-      }
-
-      // 4. Cập nhật trạng thái order → completed
       q.run(
         `UPDATE orders SET status = 'completed', updated_at = datetime('now','localtime')
          WHERE id = ?`,
         orderId
       );
 
-      // 5. Giải phóng bàn
       q.run(
         `UPDATE tables SET status = 'available', updated_at = datetime('now','localtime')
          WHERE id = ?`,
         order.table_id
       );
 
-      // 6. Ghi transaction thu nhập
-      const tableRow = q.get(`SELECT name FROM tables WHERE id = ?`, order.table_id);
-      const tableName = tableRow ? tableRow.name : `#${order.table_id}`;
-
+      const tableName = order.table_name || `#${order.table_id}`;
       q.run(
         `INSERT INTO transactions
            (type, amount, description, reference_id, reference_type, user_id, occurred_at)
@@ -314,9 +273,7 @@ router.post('/:orderId/confirm', requireAuth, (req, res) => {
         orderId,
         req.session.userId
       );
-    });
-
-    doPayment();
+    })();
     res.flash('success', 'Thanh toán thành công!');
     res.redirect('/tables');
   } catch (err) {
@@ -368,18 +325,14 @@ router.get('/:orderId/receipt', requireAuth, (req, res) => {
     orderId
   );
 
-  const settings = q.getSettings();
-
-  // Giả lập object lồng nhau cho template
-  order.table    = { id: order.table_id, name: order.table_name, code: order.table_code };
-  order.items    = rawItems.map(i => ({ ...i, menu_item: { name: i.item_name } }));
+  order.table = { id: order.table_id, name: order.table_name, code: order.table_code };
+  order.items = rawItems.map(i => ({ ...i, menu_item: { name: i.item_name } }));
   order.payments = rawPayments.map(p => ({ ...p, method: { name: p.method_name } }));
 
   res.render('payments/receipt.html', {
     order,
     items:    order.items,
     payments: order.payments,
-    settings,
   });
 });
 

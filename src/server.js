@@ -6,6 +6,7 @@ const path = require('path');
 
 const { seed } = require('./seed');
 const { q } = require('./db');
+const { wantsJson } = require('./lib/http');
 
 // ── Process-level safety net ──
 // Node ≥15 kills process on unhandled rejection by default. Log + survive
@@ -156,8 +157,7 @@ app.use((err, req, res, next) => {
   res.locals.flash = res.locals.flash || [];
   res.locals.currentPath = res.locals.currentPath || req.path;
   res.locals.query = res.locals.query || req.query || {};
-  const wantsJson = req.is('application/json') || (req.get('accept') || '').includes('application/json');
-  if (wantsJson) {
+  if (wantsJson(req)) {
     return res.status(500).json({ success: false, error: 'Đã có lỗi xảy ra.' });
   }
   try {

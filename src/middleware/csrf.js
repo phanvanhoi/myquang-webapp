@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { wantsJson } = require('../lib/http');
 
 // Public JSON endpoint — không dùng session CSRF
 const SKIP_PATHS = ['/order/submit'];
@@ -24,10 +25,7 @@ function csrfProtect(req, res, next) {
   const expected = req.session && req.session.csrfToken;
 
   if (!expected || !token || token !== expected) {
-    const wantsJson =
-      req.is('application/json') ||
-      (req.get('accept') || '').includes('application/json');
-    if (wantsJson) {
+    if (wantsJson(req)) {
       return res.status(403).json({
         success: false,
         error: 'Phiên làm việc không hợp lệ. Vui lòng tải lại trang.',

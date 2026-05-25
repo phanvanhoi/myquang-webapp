@@ -1,6 +1,7 @@
 const { Database } = require('node-sqlite3-wasm');
 const path = require('path');
 const fs = require('fs');
+const { localYmdCompact } = require('./lib/date');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'myquang.db');
 
@@ -269,11 +270,7 @@ const q = {
 
   // Order code generator — dùng ngày local (TZ container) khớp date('now','localtime')
   generateOrderCode: () => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const today = `${y}${m}${day}`;
+    const today = localYmdCompact();
     const row = db.prepare(`
       SELECT COUNT(*) as cnt FROM orders
       WHERE date(created_at) = date('now','localtime')
@@ -313,6 +310,22 @@ const q = {
         updated_at = datetime('now','localtime')
       WHERE id = ?
     `).run([total, Math.max(0, total - discount), orderId]);
+  },
+
+  findCompletedOrdersWithPaymentMismatch: (eps) => {
+    return db.prepare(`
+      SELECT o.id,
+             o.order_code,
+             o.final_amount,
+             o.updated_at,
+             COALESCE(SUM(p.amount), 0) AS paid_total
+      FROM orders o
+      LEFT JOIN payments p ON p.order_id = o.id
+      WHERE o.status = 'completed'
+      GROUP BY o.id
+      HAVING ABS(COALESCE(SUM(p.amount), 0) - o.final_amount) > ?
+      ORDER BY o.updated_at DESC
+    `).all([eps]);
   },
 };
 

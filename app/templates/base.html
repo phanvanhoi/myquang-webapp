@@ -193,11 +193,7 @@
       options = options || {};
       const method = (options.method || 'GET').toUpperCase();
       if (method !== 'GET' && method !== 'HEAD') {
-        if (options.headers instanceof Headers) {
-          options.headers.set('X-CSRF-Token', token);
-        } else {
-          options.headers = Object.assign({}, options.headers, { 'X-CSRF-Token': token });
-        }
+        options.headers = Object.assign({}, options.headers, { 'X-CSRF-Token': token });
       }
       return origFetch.call(this, url, options);
     };
