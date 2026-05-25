@@ -36,8 +36,17 @@
     font-size: 13px;
     line-height: 1.6;
   }
-  .receipt-row .name { flex: 1; min-width: 0; }
-  .receipt-row .amount { white-space: nowrap; text-align: right; }
+  .receipt-row .name {
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .receipt-row .amount {
+    flex-shrink: 0;
+    white-space: nowrap;
+    text-align: right;
+  }
 </style>
 {% endblock %}
 
@@ -110,9 +119,9 @@
       {% for item in order.items %}
       {% if item.status != 'cancelled' %}
       <div>
-        <div class="flex justify-between text-xs">
-          <span class="flex-1 min-w-0 truncate font-medium">{{ item.menu_item.name }}</span>
-          <span class="ml-2 whitespace-nowrap">
+        <div class="receipt-row">
+          <span class="name font-medium">{{ item.menu_item.name }}</span>
+          <span class="amount">
             {{ item.quantity }} × {{ item.unit_price | currency }}
           </span>
         </div>

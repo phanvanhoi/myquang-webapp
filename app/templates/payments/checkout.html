@@ -76,9 +76,9 @@
         <div class="flex-1 overflow-y-auto divide-y divide-gray-100">
           {% for item in order.items %}
           {% if item.status != 'cancelled' %}
-          <div class="flex items-center gap-3 px-5 py-3">
+          <div class="flex items-start gap-3 px-5 py-3">
             <div class="flex-1 min-w-0">
-              <p class="font-medium text-gray-800 truncate">{{ item.menu_item.name }}</p>
+              <p class="font-medium text-gray-800 break-words">{{ item.menu_item.name }}</p>
               {% if item.note %}
               <p class="text-xs text-gray-400">{{ item.note }}</p>
               {% endif %}
