@@ -149,10 +149,16 @@
     {% set floorTotal = 0 %}
     {% set floorAvail = 0 %}
     {% for sec in fd.sections %}
-      {% set floorTotal = floorTotal + sec.tables.length %}
       {% for entry in sec.tables %}
-        {% if entry.table.status == 'available' %}
-          {% set floorAvail = floorAvail + 1 %}
+        {% if not entry.table.is_virtual %}
+          {% set floorTotal = floorTotal + 1 %}
+          {% set tblStat = entry.table.status %}
+          {% if entry.table.status == 'occupied' and not entry.active_order %}
+            {% set tblStat = 'available' %}
+          {% endif %}
+          {% if tblStat == 'available' %}
+            {% set floorAvail = floorAvail + 1 %}
+          {% endif %}
         {% endif %}
       {% endfor %}
     {% endfor %}
@@ -221,15 +227,27 @@
               {% for entry in section.tables %}
               {% set tbl = entry.table %}
               {% set order = entry.active_order %}
+              {% set virtualCount = entry.active_virtual_count | default(0) %}
 
-              {# Bàn 'occupied' nhưng order rỗng → hiện 'Trống'; DB row giữ nguyên để staff mở lại reuse cùng order. #}
+              {# Bàn ảo luôn hiện Có khách; bàn thật occupied rỗng → Trống #}
               {% set displayStatus = tbl.status %}
-              {% if tbl.status == 'occupied' and not order %}
+              {% if tbl.is_virtual %}
+                {% set displayStatus = 'occupied' %}
+              {% elif tbl.status == 'occupied' and not order %}
                 {% set displayStatus = 'available' %}
               {% endif %}
 
-              {# Status config #}
-              {% if displayStatus == 'available' %}
+              {# Style bàn ảo: viền tím #}
+              {% if tbl.is_virtual %}
+                {% set borderCls  = 'border-violet-300 hover:border-violet-400' %}
+                {% set bgCls      = 'bg-violet-50' %}
+                {% set barCls     = 'bg-gradient-to-r from-violet-400 to-violet-500' %}
+                {% set dotCls     = 'bg-violet-500 pulse-dot' %}
+                {% set textStatus = 'Bàn ảo' %}
+                {% set labelCls   = 'bg-violet-100 text-violet-700' %}
+                {% set iconName   = 'copy' %}
+                {% set iconCls    = 'text-violet-500' %}
+              {% elif displayStatus == 'available' %}
                 {% set borderCls  = 'border-green-300 hover:border-green-400' %}
                 {% set bgCls      = 'bg-white' %}
                 {% set barCls     = 'bg-gradient-to-r from-green-400 to-green-500' %}
@@ -285,7 +303,11 @@
                     <span class="text-sm font-bold text-gray-800 truncate leading-tight flex-1 min-w-0">
                       {{ tbl.name or tbl.code }}
                     </span>
+                    {% if tbl.is_virtual %}
+                    <span class="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">Ảo</span>
+                    {% else %}
                     <span class="w-2 h-2 rounded-full flex-shrink-0 {{ dotCls }}"></span>
+                    {% endif %}
                   </div>
 
                   {# Capacity #}
@@ -315,8 +337,8 @@
                   </div>
                   {% endif %}
 
-                  {# Action button — always at bottom #}
-                  <div class="mt-auto pt-1">
+                  {# Action buttons #}
+                  <div class="mt-auto pt-1 space-y-1">
                     {% if displayStatus == 'available' %}
                     <form action="/tables/{{ tbl.id }}/open" method="post">
                       <button
@@ -329,10 +351,31 @@
                       </button>
                     </form>
 
-                    {% elif displayStatus == 'occupied' %}
+                    {% elif displayStatus == 'occupied' and not tbl.is_virtual %}
                     <a
-                      href="/tables/{{ tbl.id }}/order"
+                      href="/tables/{{ tbl.id }}/order{% if order %}?order_id={{ order.id }}{% endif %}"
                       class="w-full h-9 bg-red-500 hover:bg-red-600 text-white text-xs
+                             font-semibold rounded-lg transition flex items-center justify-center gap-1"
+                    >
+                      <i data-lucide="clipboard-list" class="w-3 h-3"></i>
+                      Xem order
+                    </a>
+                    {% if virtualCount < (maxVirtualPerParent | default(2)) %}
+                    <form action="/tables/{{ tbl.id }}/virtual" method="post">
+                      <button type="submit"
+                              class="w-full h-8 border border-violet-300 bg-violet-50 hover:bg-violet-100
+                                     text-violet-700 text-xs font-semibold rounded-lg transition
+                                     flex items-center justify-center gap-1">
+                        <i data-lucide="plus" class="w-3 h-3"></i>
+                        Bàn ảo
+                      </button>
+                    </form>
+                    {% endif %}
+
+                    {% elif displayStatus == 'occupied' and tbl.is_virtual %}
+                    <a
+                      href="/tables/{{ tbl.id }}/order{% if order %}?order_id={{ order.id }}{% endif %}"
+                      class="w-full h-9 bg-violet-500 hover:bg-violet-600 text-white text-xs
                              font-semibold rounded-lg transition flex items-center justify-center gap-1"
                     >
                       <i data-lucide="clipboard-list" class="w-3 h-3"></i>

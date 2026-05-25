@@ -3,6 +3,7 @@ const router = express.Router();
 const { q } = require('../db');
 const { requireAuth, requireAdminOrCashier } = require('../middleware/auth');
 const { releaseTableIfEmpty } = require('./tables');
+const { afterOrderClosed } = require('../lib/virtual-tables');
 const { wantsJson } = require('../lib/http');
 
 function markOrderItemsServed(orderId) {
@@ -302,11 +303,8 @@ router.post('/:id/cancel', requireAdminOrCashier, (req, res) => {
       `UPDATE orders SET status = 'cancelled', updated_at = datetime('now','localtime') WHERE id = ?`,
       id
     );
-    q.run(
-      `UPDATE tables SET status = 'available', updated_at = datetime('now','localtime') WHERE id = ?`,
-      order.table_id
-    );
   })();
+  afterOrderClosed(order);
   res.flash('success', 'Đã huỷ order');
   res.redirect('/tables');
 });

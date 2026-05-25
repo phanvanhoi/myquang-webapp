@@ -236,7 +236,7 @@ function kitchenApp(initial) {
         if (!g) {
           g = {
             tableId: key,
-            tableName: it.table_name || 'Mang về',
+            tableName: it.kitchen_table_name || it.table_name || 'Mang về',
             orderCode: it.order_code,
             guestCount: it.guest_count,
             items: [],

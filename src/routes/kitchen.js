@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { q } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { kitchenTableLabel } = require('../lib/virtual-tables');
 
 router.use(requireAuth);
 
@@ -14,11 +15,14 @@ const SQL_KITCHEN_ITEMS = `
          mi.name AS item_name,
          o.id AS order_id, o.order_code, o.guest_count, o.created_at AS order_created_at,
          t.id AS table_id, t.name AS table_name, t.code AS table_code,
+         t.is_virtual AS is_virtual,
+         pt.name AS parent_name, pt.code AS parent_code,
          f.name AS floor_name, r.name AS room_name
   FROM order_items oi
   JOIN orders o ON o.id = oi.order_id
   JOIN menu_items mi ON mi.id = oi.item_id
   LEFT JOIN tables t ON t.id = o.table_id
+  LEFT JOIN tables pt ON pt.id = t.parent_table_id
   LEFT JOIN floors f ON f.id = t.floor_id
   LEFT JOIN rooms  r ON r.id = t.room_id
   WHERE oi.status IN ('pending', 'preparing')
@@ -28,13 +32,19 @@ const SQL_KITCHEN_ITEMS = `
 
 // GET /kitchen — màn hình bếp
 router.get('/', (req, res) => {
-  const items = q.all(SQL_KITCHEN_ITEMS);
+  const items = q.all(SQL_KITCHEN_ITEMS).map(it => ({
+    ...it,
+    kitchen_table_name: kitchenTableLabel(it),
+  }));
   res.render('kitchen/index.html', { items });
 });
 
 // GET /kitchen/data — JSON cho auto-refresh
 router.get('/data', (req, res) => {
-  const items = q.all(SQL_KITCHEN_ITEMS);
+  const items = q.all(SQL_KITCHEN_ITEMS).map(it => ({
+    ...it,
+    kitchen_table_name: kitchenTableLabel(it),
+  }));
   res.json({ success: true, items, ts: Date.now() });
 });
 

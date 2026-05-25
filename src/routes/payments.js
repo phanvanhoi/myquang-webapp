@@ -8,6 +8,7 @@ const {
   validatePaymentSubmission,
 } = require('../lib/money');
 const { localYmd } = require('../lib/date');
+const { afterOrderClosed } = require('../lib/virtual-tables');
 
 function recordPayment(orderId, methodName, amount) {
   if (amount <= 0) return;
@@ -259,11 +260,7 @@ router.post('/:orderId/confirm', requireAuth, (req, res) => {
         orderId
       );
 
-      q.run(
-        `UPDATE tables SET status = 'available', updated_at = datetime('now','localtime')
-         WHERE id = ?`,
-        order.table_id
-      );
+      afterOrderClosed(order);
 
       const tableName = order.table_name || `#${order.table_id}`;
       q.run(

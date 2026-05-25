@@ -2,6 +2,15 @@ const express = require('express');
 const router = express.Router();
 const { q } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const {
+  countActiveVirtualChildren,
+  createVirtualTable,
+  afterOrderClosed,
+  deactivateVirtualTable,
+  releasePhysicalTableIfEmpty,
+  sortTableEntries,
+  MAX_VIRTUAL_PER_PARENT,
+} = require('../lib/virtual-tables');
 
 router.use(requireAuth);
 
@@ -19,16 +28,23 @@ router.get('/', (req, res) => {
     `SELECT * FROM rooms WHERE is_active = 1 ORDER BY floor_id, sort_order, id`
   );
 
-  // 3. Lấy tất cả bàn đang hoạt động (kèm floor/room info) — bỏ qua sentinel mang về
+  // 3. Bàn thật + bàn ảo đang có order mở (ẩn MV takeaway)
   const tables = q.all(
     `SELECT t.*,
             f.name as floor_name,
-            r.name as room_name
+            r.name as room_name,
+            pt.name as parent_name,
+            pt.code as parent_code
      FROM tables t
      JOIN floors f ON f.id = t.floor_id
      LEFT JOIN rooms r ON r.id = t.room_id
+     LEFT JOIN tables pt ON pt.id = t.parent_table_id
      WHERE t.is_active = 1 AND t.is_takeaway = 0
-     ORDER BY f.sort_order, r.sort_order, t.id`
+       AND (t.is_virtual = 0 OR (t.is_virtual = 1 AND EXISTS (
+         SELECT 1 FROM orders o
+         WHERE o.table_id = t.id AND o.status IN ('open','serving')
+       )))
+     ORDER BY f.sort_order, r.sort_order, t.parent_table_id, t.is_virtual, t.id`
   );
 
   // 3b. Đơn mang về đang xử lý
@@ -45,10 +61,15 @@ router.get('/', (req, res) => {
      ORDER BY o.created_at DESC`
   );
 
-  // entry shape consumed by tables/index.html: { table, active_order }
   const tableEntries = tables.map(table => ({
     table,
-    active_order: q.findActiveOrderForTable(table.id, { requireItems: true }),
+    active_order: q.findActiveOrderForTable(table.id, { requireItems: true })
+      || (table.is_virtual
+        ? q.findActiveOrderForTable(table.id, { requireItems: false })
+        : null),
+    active_virtual_count: table.is_virtual
+      ? 0
+      : countActiveVirtualChildren(table.id),
   }));
 
   // 5. Build floors_data structure used by index.html template
@@ -61,14 +82,14 @@ router.get('/', (req, res) => {
     const tables_by_room = {};
 
     // Bàn không thuộc phòng nào
-    const noRoomEntries = floorEntries.filter(e => !e.table.room_id);
+    const noRoomEntries = sortTableEntries(floorEntries.filter(e => !e.table.room_id));
     if (noRoomEntries.length > 0) {
       tables_by_room[null] = noRoomEntries;
     }
 
     // Bàn theo phòng
     floorRooms.forEach(room => {
-      const roomEntries = floorEntries.filter(e => e.table.room_id === room.id);
+      const roomEntries = sortTableEntries(floorEntries.filter(e => e.table.room_id === room.id));
       if (roomEntries.length > 0) {
         tables_by_room[room.id] = roomEntries;
       }
@@ -88,13 +109,13 @@ router.get('/', (req, res) => {
 
     const sections = [];
 
-    const noRoomEntries = floorEntries.filter(e => !e.table.room_id);
+    const noRoomEntries = sortTableEntries(floorEntries.filter(e => !e.table.room_id));
     if (noRoomEntries.length > 0) {
       sections.push({ room: null, tables: noRoomEntries });
     }
 
     floorRooms.forEach(room => {
-      const roomEntries = floorEntries.filter(e => e.table.room_id === room.id);
+      const roomEntries = sortTableEntries(floorEntries.filter(e => e.table.room_id === room.id));
       if (roomEntries.length > 0) {
         sections.push({
           room: { id: room.id, name: room.name },
@@ -106,7 +127,28 @@ router.get('/', (req, res) => {
     return { floor, sections };
   });
 
-  res.render('tables/index.html', { floors, tablesByFloor, floors_data, takeawayOrders });
+  res.render('tables/index.html', {
+    floors,
+    tablesByFloor,
+    floors_data,
+    takeawayOrders,
+    maxVirtualPerParent: MAX_VIRTUAL_PER_PARENT,
+  });
+});
+
+// ─────────────────────────────────────────────
+// POST /tables/:id/virtual — tạo bàn ảo (tối đa 2 / bàn thật)
+// ─────────────────────────────────────────────
+router.post('/:id/virtual', requireAuth, (req, res) => {
+  const parentId = parseInt(req.params.id);
+  try {
+    const { virtualId } = createVirtualTable(parentId, req.session.userId);
+    res.flash('success', 'Đã tạo bàn ảo.');
+    return res.redirect(`/tables/${virtualId}/order`);
+  } catch (err) {
+    res.flash('error', err.message || 'Không thể tạo bàn ảo.');
+    return res.redirect('/tables');
+  }
 });
 
 // ─────────────────────────────────────────────
@@ -120,6 +162,10 @@ router.post('/:id/open', (req, res) => {
   if (!table) {
     res.flash('error', 'Bàn không tồn tại.');
     return res.redirect('/tables');
+  }
+  if (table.is_virtual) {
+    res.flash('error', 'Bàn ảo không dùng Mở bàn — vào Xem order.');
+    return res.redirect(`/tables/${tableId}/order`);
   }
 
   // Reuse trước khi tạo mới: tránh ngốn order_code và để staff "mở lại" cùng order rỗng.
@@ -205,10 +251,12 @@ router.get('/:id/order', (req, res) => {
   const table = q.get(
     `SELECT t.*,
             f.name as floor_name, f.id as floor_id,
-            r.name as room_name, r.id as room_id_ref
+            r.name as room_name, r.id as room_id_ref,
+            pt.name as parent_name, pt.code as parent_code
      FROM tables t
      JOIN floors f ON f.id = t.floor_id
      LEFT JOIN rooms r ON r.id = t.room_id
+     LEFT JOIN tables pt ON pt.id = t.parent_table_id
      WHERE t.id = ? AND t.is_active = 1 AND t.is_takeaway = 0`,
     tableId
   );
@@ -296,55 +344,49 @@ router.post('/:id/close', (req, res) => {
     return res.redirect('/tables');
   }
 
-  const closeTable = q.transaction(() => {
-    // Lấy tất cả order đang mở của bàn này (chỉ dine-in để không đụng đơn mang về)
-    const openOrders = q.all(
-      `SELECT id FROM orders WHERE table_id = ? AND status IN ('open','serving') AND order_type = 'dine_in'`,
-      tableId
-    );
+  const openOrders = q.all(
+    `SELECT id, table_id FROM orders WHERE table_id = ? AND status IN ('open','serving') AND order_type = 'dine_in'`,
+    tableId
+  );
 
+  q.transaction(() => {
     openOrders.forEach(order => {
-      // Hủy tất cả order items chưa cancel
       q.run(
         `UPDATE order_items SET status = 'cancelled', updated_at = datetime('now','localtime')
          WHERE order_id = ? AND status != 'cancelled'`,
         order.id
       );
-      // Hủy order
       q.run(
         `UPDATE orders SET status = 'cancelled', updated_at = datetime('now','localtime') WHERE id = ?`,
         order.id
       );
     });
+  })();
 
-    // Đặt bàn về trạng thái trống
-    q.run(
-      `UPDATE tables SET status = 'available', updated_at = datetime('now','localtime') WHERE id = ?`,
-      tableId
-    );
-  });
+  openOrders.forEach(order => afterOrderClosed(order));
 
-  closeTable();
   res.flash('success', `Đã hủy order và giải phóng bàn ${table.name}.`);
   res.redirect('/tables');
 });
 
-// Set bàn về 'available' nếu không còn order open/serving nào trên bàn đó.
-// Dùng sau khi merge gom items khỏi 1 bàn — bàn đó có thể đã trống.
-// Không đụng bàn sentinel "Mang về" (is_takeaway=1).
 function releaseTableIfEmpty(tableId) {
   if (!tableId) return;
+  const table = q.get(`SELECT is_virtual, parent_table_id FROM tables WHERE id = ?`, tableId);
+  if (!table) return;
+
   const stillActive = q.get(
     `SELECT 1 FROM orders WHERE table_id = ? AND status IN ('open','serving') LIMIT 1`,
     tableId
   );
-  if (!stillActive) {
-    q.run(
-      `UPDATE tables SET status = 'available', updated_at = datetime('now','localtime')
-       WHERE id = ? AND is_takeaway = 0`,
-      tableId
-    );
+  if (stillActive) return;
+
+  if (table.is_virtual) {
+    const parentId = deactivateVirtualTable(tableId);
+    releasePhysicalTableIfEmpty(parentId);
+    return;
   }
+
+  releasePhysicalTableIfEmpty(tableId);
 }
 
 module.exports = router;
