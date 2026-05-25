@@ -126,6 +126,85 @@
       </div>
     </div>
 
+    <!-- Thống kê Mì & Bún -->
+    <div x-show="!itemLoading && noodleStats" class="space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h3 class="text-sm font-semibold text-gray-700">Thống kê Mì &amp; Bún</h3>
+        <span class="text-xs text-gray-400"
+              x-text="noodleStats ? (noodleStats.period.start + ' → ' + noodleStats.period.end) : ''"></span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Mì -->
+        <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-amber-700">Mì Quảng</h4>
+            <span class="text-xs text-gray-400">theo danh mục Mì*</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="rounded-lg bg-amber-50/60 p-3 text-center">
+              <div class="text-xs text-gray-500 mb-1">Tổng SL</div>
+              <div class="text-lg font-bold text-gray-800" x-text="noodleStats?.mi?.qty || 0"></div>
+            </div>
+            <div class="rounded-lg bg-amber-50/60 p-3 text-center">
+              <div class="text-xs text-gray-500 mb-1">Doanh thu</div>
+              <div class="text-lg font-bold text-amber-600" x-text="formatCurrency(noodleStats?.mi?.revenue || 0)"></div>
+            </div>
+            <div class="rounded-lg border border-amber-100 p-3 text-center">
+              <div class="text-xs text-gray-500 mb-1">TB/ngày</div>
+              <div class="text-base font-semibold text-blue-600" x-text="noodleStats?.mi?.avg_day || 0"></div>
+              <div class="text-[11px] text-gray-400 mt-1" x-text="formatCurrency(noodleStats?.mi?.revenue_avg_day || 0)"></div>
+            </div>
+            <div class="rounded-lg border border-amber-100 p-3 text-center">
+              <div class="text-xs text-gray-500 mb-1">TB/tuần</div>
+              <div class="text-base font-semibold text-blue-600" x-text="noodleStats?.mi?.avg_week || 0"></div>
+              <div class="text-[11px] text-gray-400 mt-1" x-text="formatCurrency(noodleStats?.mi?.revenue_avg_week || 0)"></div>
+            </div>
+            <div class="rounded-lg border border-amber-100 p-3 text-center col-span-2">
+              <div class="text-xs text-gray-500 mb-1">TB/tháng</div>
+              <div class="text-base font-semibold text-blue-600" x-text="noodleStats?.mi?.avg_month || 0"></div>
+              <div class="text-[11px] text-gray-400 mt-1" x-text="formatCurrency(noodleStats?.mi?.revenue_avg_month || 0)"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Bún -->
+        <div class="bg-white rounded-xl shadow-sm border border-green-100 p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-green-700">Bún Mắm</h4>
+            <span class="text-xs text-gray-400">theo danh mục Bún*</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="rounded-lg bg-green-50/60 p-3 text-center">
+              <div class="text-xs text-gray-500 mb-1">Tổng SL</div>
+              <div class="text-lg font-bold text-gray-800" x-text="noodleStats?.bun?.qty || 0"></div>
+            </div>
+            <div class="rounded-lg bg-green-50/60 p-3 text-center">
+              <div class="text-xs text-gray-500 mb-1">Doanh thu</div>
+              <div class="text-lg font-bold text-green-600" x-text="formatCurrency(noodleStats?.bun?.revenue || 0)"></div>
+            </div>
+            <div class="rounded-lg border border-green-100 p-3 text-center">
+              <div class="text-xs text-gray-500 mb-1">TB/ngày</div>
+              <div class="text-base font-semibold text-blue-600" x-text="noodleStats?.bun?.avg_day || 0"></div>
+              <div class="text-[11px] text-gray-400 mt-1" x-text="formatCurrency(noodleStats?.bun?.revenue_avg_day || 0)"></div>
+            </div>
+            <div class="rounded-lg border border-green-100 p-3 text-center">
+              <div class="text-xs text-gray-500 mb-1">TB/tuần</div>
+              <div class="text-base font-semibold text-blue-600" x-text="noodleStats?.bun?.avg_week || 0"></div>
+              <div class="text-[11px] text-gray-400 mt-1" x-text="formatCurrency(noodleStats?.bun?.revenue_avg_week || 0)"></div>
+            </div>
+            <div class="rounded-lg border border-green-100 p-3 text-center col-span-2">
+              <div class="text-xs text-gray-500 mb-1">TB/tháng</div>
+              <div class="text-base font-semibold text-blue-600" x-text="noodleStats?.bun?.avg_month || 0"></div>
+              <div class="text-[11px] text-gray-400 mt-1" x-text="formatCurrency(noodleStats?.bun?.revenue_avg_month || 0)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="text-xs text-gray-400">
+        TB/ngày, TB/tuần, TB/tháng tính theo số ngày/tuần/tháng lịch trong kỳ đã chọn.
+        Số dòng nhỏ bên dưới mỗi ô TB là doanh thu trung bình tương ứng.
+      </p>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <!-- Bảng top 20 -->
       <div class="bg-white rounded-xl shadow-sm border border-amber-100 overflow-hidden">
@@ -424,6 +503,7 @@ function reportApp() {
     itemEnd: new Date().toISOString().slice(0, 10),
     itemLoading: false,
     itemsData: [],
+    noodleStats: null,
     itemChart: null,
 
     // Finance tab
@@ -507,6 +587,7 @@ function reportApp() {
         const res = await fetch(`/reports/items?start_date=${this.itemStart}&end_date=${this.itemEnd}`);
         const d = await res.json();
         this.itemsData = d.items || [];
+        this.noodleStats = d.noodle_stats || null;
         this.renderItemChart(d.items || []);
       } catch(e) { console.error(e); }
       this.itemLoading = false;

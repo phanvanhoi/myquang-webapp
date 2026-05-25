@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { q } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { reportPeriodMeta } = require('../lib/date');
+const { buildNoodleStats } = require('../lib/noodle-stats');
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -232,6 +234,7 @@ router.get('/revenue', requireAuth, (req, res) => {
 router.get('/items', requireAuth, (req, res) => {
   const start = req.query.start_date || new Date().toISOString().slice(0, 10);
   const end   = req.query.end_date   || start;
+  const period = reportPeriodMeta(start, end);
 
   const rows = q.all(`
     SELECT mi.name,
@@ -250,6 +253,24 @@ router.get('/items', requireAuth, (req, res) => {
     LIMIT 20
   `, start, end);
 
+  const noodleRows = q.all(`
+    SELECT CASE
+             WHEN mc.name LIKE 'Mì%' THEN 'mi'
+             WHEN mc.name LIKE 'Bún%' THEN 'bun'
+           END              as noodle_type,
+           SUM(oi.quantity) as qty,
+           SUM(oi.subtotal) as revenue
+    FROM order_items oi
+    JOIN menu_items mi       ON mi.id = oi.item_id
+    JOIN menu_categories mc  ON mc.id = mi.category_id
+    JOIN orders o            ON o.id  = oi.order_id
+    WHERE o.status  = 'completed'
+      AND oi.status != 'cancelled'
+      AND date(o.updated_at) BETWEEN ? AND ?
+      AND (mc.name LIKE 'Mì%' OR mc.name LIKE 'Bún%')
+    GROUP BY noodle_type
+  `, start, end);
+
   const totalRevenue = rows.reduce((s, r) => s + r.revenue, 0);
 
   res.json({
@@ -257,6 +278,7 @@ router.get('/items', requireAuth, (req, res) => {
       ...r,
       pct: totalRevenue ? (r.revenue / totalRevenue * 100).toFixed(1) : '0.0',
     })),
+    noodle_stats: buildNoodleStats(noodleRows, period),
   });
 });
 
