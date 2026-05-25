@@ -6,12 +6,14 @@
 {% block head %}
 <style>
   @media print {
-    /* Ẩn toàn bộ layout, chỉ show receipt-content */
-    body > *:not(#print-root) { display: none !important; }
+    /* Ẩn chrome app; base.html đã ẩn .no-print */
     aside, header, #flash-container, .no-print { display: none !important; }
     body { background: white !important; }
+    main { padding: 0 !important; overflow: visible !important; }
     #receipt-content {
       display: block !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
       padding: 0;
       margin: 0;
       max-width: 80mm;

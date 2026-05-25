@@ -3,6 +3,12 @@ const router = express.Router();
 const { q } = require('../db');
 const { requireAuth, requireAdminOrCashier } = require('../middleware/auth');
 
+const MONEY_EPS = 0.01;
+
+function roundMoney(n) {
+  return Math.round(Number(n) * 100) / 100;
+}
+
 // ─────────────────────────────────────────────
 // GET /payments/history — lịch sử hóa đơn (theo ngày / giai đoạn)
 // ─────────────────────────────────────────────
@@ -214,10 +220,16 @@ router.get('/:orderId', requireAuth, (req, res) => {
 router.post('/:orderId/confirm', requireAuth, (req, res) => {
   const orderId = parseInt(req.params.orderId);
 
-  const discountAmount = parseFloat(req.body.discount_amount) || 0;
-  const discountReason = (req.body.discount_reason || '').trim();
-  const cashAmount     = parseFloat(req.body.cash_amount)     || 0;
-  const transferAmount = parseFloat(req.body.transfer_amount) || 0;
+  // UI chưa có form giảm giá — bỏ qua body, tránh thao túng POST.
+  const discountAmount = 0;
+  const discountReason = '';
+  const cashAmount     = roundMoney(parseFloat(req.body.cash_amount)     || 0);
+  const transferAmount = roundMoney(parseFloat(req.body.transfer_amount) || 0);
+
+  if (cashAmount < 0 || transferAmount < 0) {
+    res.flash('error', 'Số tiền thanh toán không hợp lệ.');
+    return res.redirect(`/payments/${orderId}`);
+  }
 
   // Waiter chỉ được ghi nhận chuyển khoản. Tiền mặt phải do thu ngân/admin
   // xác nhận (waiter không cầm két). Defense-in-depth: dù UI ẩn nút cash,
@@ -238,7 +250,17 @@ router.post('/:orderId/confirm', requireAuth, (req, res) => {
       }
 
       // 2. Tính final_amount sau giảm giá
-      const finalAmount = Math.max(0, order.total_amount - discountAmount);
+      const finalAmount = roundMoney(Math.max(0, order.total_amount - discountAmount));
+      const paidTotal   = roundMoney(cashAmount + transferAmount);
+
+      if (finalAmount > MONEY_EPS) {
+        if (paidTotal < MONEY_EPS) {
+          throw new Error('Chưa nhập số tiền thanh toán.');
+        }
+        if (Math.abs(paidTotal - finalAmount) > MONEY_EPS) {
+          throw new Error('Tổng tiền mặt + chuyển khoản phải bằng số tiền cần thanh toán.');
+        }
+      }
 
       q.run(
         `UPDATE orders
