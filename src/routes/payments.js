@@ -260,6 +260,9 @@ router.post('/:orderId/confirm', requireAuth, (req, res) => {
         if (Math.abs(paidTotal - finalAmount) > MONEY_EPS) {
           throw new Error('Tổng tiền mặt + chuyển khoản phải bằng số tiền cần thanh toán.');
         }
+        if (isWaiter && Math.abs(transferAmount - finalAmount) > MONEY_EPS) {
+          throw new Error('Phục vụ phải xác nhận chuyển khoản đúng số tiền cần thanh toán.');
+        }
       }
 
       q.run(

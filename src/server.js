@@ -20,6 +20,13 @@ process.on('uncaughtException', (err) => {
 // ── Seed on startup ──
 seed();
 
+const isProduction = process.env.NODE_ENV === 'production';
+const sessionSecret = process.env.SECRET_KEY;
+if (isProduction && !sessionSecret) {
+  console.error('[FATAL] SECRET_KEY is required when NODE_ENV=production');
+  process.exit(1);
+}
+
 const app = express();
 
 // ── Template engine: Nunjucks ──
@@ -68,7 +75,7 @@ app.use(session({
   store: new MemoryStore({
     checkPeriod: 60 * 60 * 1000, // sweep mỗi giờ
   }),
-  secret: process.env.SECRET_KEY || 'myquang-secret-2026',
+  secret: sessionSecret || 'myquang-secret-2026',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 4 * 60 * 60 * 1000 }, // 4 hours

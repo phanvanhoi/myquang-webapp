@@ -267,9 +267,13 @@ const q = {
     `).run([key, value]);
   },
 
-  // Order code generator
+  // Order code generator — dùng ngày local (TZ container) khớp date('now','localtime')
   generateOrderCode: () => {
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const today = `${y}${m}${day}`;
     const row = db.prepare(`
       SELECT COUNT(*) as cnt FROM orders
       WHERE date(created_at) = date('now','localtime')

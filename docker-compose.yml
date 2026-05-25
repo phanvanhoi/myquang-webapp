@@ -11,6 +11,8 @@ services:
       - PORT=3001
       - DB_PATH=/data/myquang.db
       - TZ=Asia/Ho_Chi_Minh
+      # Bắt buộc: tạo file .env cạnh docker-compose.yml (xem .env.example)
+      - SECRET_KEY=${SECRET_KEY}
 
 volumes:
   myquang_data:
