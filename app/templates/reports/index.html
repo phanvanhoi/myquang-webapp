@@ -106,41 +106,45 @@
   <div x-show="activeTab === 'items'" x-cloak class="space-y-4">
 
     <!-- Filter -->
-    <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-4">
-      <div class="flex flex-wrap items-center gap-3">
-        <div class="flex w-full sm:w-auto rounded-lg border border-amber-200 overflow-hidden">
-          <button @click="applyItemPreset('week')"
-                  :class="itemPreset === 'week' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
-                  class="flex-1 sm:flex-none px-4 py-2 text-sm font-medium transition-colors border-r border-amber-200">
-            1 tuần
-          </button>
-          <button @click="applyItemPreset('month')"
-                  :class="itemPreset === 'month' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
-                  class="flex-1 sm:flex-none px-4 py-2 text-sm font-medium transition-colors border-r border-amber-200">
-            1 tháng
-          </button>
-          <button @click="applyItemPreset('quarter')"
-                  :class="itemPreset === 'quarter' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
-                  class="flex-1 sm:flex-none px-4 py-2 text-sm font-medium transition-colors">
-            1 quý
-          </button>
-        </div>
-        <div class="flex items-center gap-2 text-sm">
-          <label class="text-gray-600 font-medium">Từ:</label>
-          <input type="date" x-model="itemStart" @change="itemPreset = null"
-                 class="border border-amber-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
-        </div>
-        <div class="flex items-center gap-2 text-sm">
-          <label class="text-gray-600 font-medium">Đến:</label>
-          <input type="date" x-model="itemEnd" @change="itemPreset = null"
-                 class="border border-amber-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
-        </div>
-        <button @click="loadItems()"
-                class="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors">
-          <i data-lucide="search" class="w-4 h-4"></i>
-          Tìm kiếm
+    <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-4 space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:items-end sm:gap-3">
+      <!-- Preset nhanh — full width trên mobile -->
+      <div class="flex w-full sm:w-auto rounded-lg border border-amber-200 overflow-hidden shrink-0">
+        <button @click="applyItemPreset('week')"
+                :class="itemPreset === 'week' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
+                class="flex-1 sm:flex-none px-3 sm:px-4 h-10 text-sm font-medium transition-colors border-r border-amber-200">
+          1 tuần
+        </button>
+        <button @click="applyItemPreset('month')"
+                :class="itemPreset === 'month' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
+                class="flex-1 sm:flex-none px-3 sm:px-4 h-10 text-sm font-medium transition-colors border-r border-amber-200">
+          1 tháng
+        </button>
+        <button @click="applyItemPreset('quarter')"
+                :class="itemPreset === 'quarter' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 hover:bg-amber-50'"
+                class="flex-1 sm:flex-none px-3 sm:px-4 h-10 text-sm font-medium transition-colors">
+          1 quý
         </button>
       </div>
+
+      <!-- Từ / Đến — 2 cột trên mobile, inline trên desktop -->
+      <div class="grid grid-cols-2 gap-2 w-full sm:flex sm:w-auto sm:items-center sm:gap-3">
+        <label class="flex flex-col gap-1 min-w-0 sm:flex-row sm:items-center sm:gap-2">
+          <span class="text-xs sm:text-sm text-gray-600 font-medium shrink-0">Từ</span>
+          <input type="date" x-model="itemStart" @change="itemPreset = null"
+                 class="w-full min-w-0 h-10 border border-amber-200 rounded-lg px-2 sm:px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
+        </label>
+        <label class="flex flex-col gap-1 min-w-0 sm:flex-row sm:items-center sm:gap-2">
+          <span class="text-xs sm:text-sm text-gray-600 font-medium shrink-0">Đến</span>
+          <input type="date" x-model="itemEnd" @change="itemPreset = null"
+                 class="w-full min-w-0 h-10 border border-amber-200 rounded-lg px-2 sm:px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
+        </label>
+      </div>
+
+      <button @click="loadItems()"
+              class="w-full sm:w-auto h-10 flex items-center justify-center gap-2 px-4 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors shrink-0">
+        <i data-lucide="search" class="w-4 h-4"></i>
+        Tìm kiếm
+      </button>
     </div>
 
     <!-- Thống kê Mì & Bún -->
