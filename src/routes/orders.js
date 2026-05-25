@@ -3,6 +3,11 @@ const router = express.Router();
 const { q } = require('../db');
 const { requireAuth, requireAdminOrCashier } = require('../middleware/auth');
 const { releaseTableIfEmpty } = require('./tables');
+const { wantsJson } = require('../lib/http');
+
+function markOrderItemsServed(orderId) {
+  return q.markOrderItemsServed(orderId);
+}
 
 // Trang chi tiết order tập trung ở /tables/:tableId/order (POS) cho dine-in
 // và /takeaway/:id cho mang về. /orders chỉ giữ list view + redirect.
@@ -227,6 +232,9 @@ router.post('/:id/send-to-kitchen', requireAuth, (req, res) => {
     id
   );
   if (!order) {
+    if (wantsJson(req)) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy order' });
+    }
     res.flash('error', 'Không tìm thấy order');
     return res.redirect('/orders');
   }
@@ -236,8 +244,31 @@ router.post('/:id/send-to-kitchen', requireAuth, (req, res) => {
      WHERE order_id = ? AND status = 'pending'`,
     id
   );
+  if (wantsJson(req)) {
+    return res.json({ success: true });
+  }
   res.flash('success', 'Đã gửi món lên bếp');
   res.redirect(posUrlFor(order));
+});
+
+// POST /:id/mark-served — Thanh toán: đánh dấu món đã lên (pending/preparing → served)
+router.post('/:id/mark-served', requireAuth, (req, res) => {
+  const { id } = req.params;
+  const order = q.get(
+    `SELECT id, table_id, order_type FROM orders WHERE id = ?`,
+    id
+  );
+  if (!order) {
+    return res.status(404).json({ success: false, error: 'Không tìm thấy order' });
+  }
+  if (!['open', 'serving'].includes(order.status)) {
+    return res.status(400).json({
+      success: false,
+      error: `Không thể cập nhật món: order đã ở trạng thái "${order.status}".`,
+    });
+  }
+  const result = markOrderItemsServed(id);
+  return res.json({ success: true, changed: result.changes });
 });
 
 // POST /:id/cancel — Huỷ toàn bộ order

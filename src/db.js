@@ -327,6 +327,14 @@ const q = {
       ORDER BY o.updated_at DESC
     `).all([eps]);
   },
+
+  markOrderItemsServed: (orderId) => {
+    return db.prepare(`
+      UPDATE order_items
+      SET status = 'served', updated_at = datetime('now','localtime')
+      WHERE order_id = ? AND status IN ('pending', 'preparing')
+    `).run([orderId]);
+  },
 };
 
 module.exports = { db, q };

@@ -240,6 +240,8 @@ router.post('/:orderId/confirm', requireAuth, (req, res) => {
       });
       if (paymentError) throw new Error(paymentError);
 
+      q.markOrderItemsServed(orderId);
+
       q.run(
         `UPDATE orders
          SET discount_amount = ?, discount_reason = ?, final_amount = ?,

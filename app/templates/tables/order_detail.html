@@ -528,7 +528,6 @@ function posOrder(menuItems, orderId, serverItemCount, existingTotal) {
     },
 
     // Persist cart vào DB (thêm order_items với status='pending').
-    // Trả về { ok, data } — data chứa redirect URL khi thành công.
     async _persistCart() {
       if (this.cart.length === 0) return { ok: true, data: { success: true } };
       const payload = this.cart.map(e => ({
@@ -565,6 +564,24 @@ function posOrder(menuItems, orderId, serverItemCount, existingTotal) {
       }
     },
 
+    async _markItemsServed() {
+      try {
+        const resp = await fetch(`/orders/${this.orderId}/mark-served`, {
+          method: 'POST',
+          headers: { 'Accept': 'application/json' },
+        });
+        const data = await resp.json();
+        if (!data.success) {
+          alert(data.error || 'Không thể cập nhật trạng thái món.');
+          return false;
+        }
+        return true;
+      } catch (e) {
+        alert('Lỗi kết nối. Vui lòng thử lại.');
+        return false;
+      }
+    },
+
     async sendToKitchen() {
       if (this.cart.length === 0 || this.sending) return;
       this.sending = true;
@@ -576,12 +593,13 @@ function posOrder(menuItems, orderId, serverItemCount, existingTotal) {
       window.location.href = data.redirect || window.location.pathname;
     },
 
-    // Tự gửi bếp (nếu cart có món) trước khi sang trang thanh toán — tránh mất món.
+    // Lưu cart (nếu có) rồi đánh dấu toàn bộ món đã lên trước khi thanh toán.
     async checkout() {
       if (this.sending) return;
       this.sending = true;
       const { ok } = await this._persistCart();
       if (!ok) { this.sending = false; return; }
+      if (!(await this._markItemsServed())) { this.sending = false; return; }
       window.location.href = `/payments/${this.orderId}`;
     },
   };
