@@ -405,7 +405,7 @@
                     </form>
                     {% endif %}
 
-                    {% if not tbl.is_virtual %}
+                    {% if showTableQr and not tbl.is_virtual %}
                     <a
                       href="/tables/{{ tbl.id }}/qr"
                       class="w-full h-8 border border-amber-300 bg-amber-50 hover:bg-amber-100
