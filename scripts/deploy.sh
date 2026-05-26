@@ -21,6 +21,9 @@ git pull origin master
 echo "==> docker compose up -d --build"
 docker compose up -d --build
 
+echo "==> Migrate DB (ban ao, read-only dry schema)"
+docker compose exec -T myquang node src/migrate-virtual-tables.js || true
+
 echo "==> Logs (20 dòng cuối)"
 docker compose logs --tail=20 myquang
 

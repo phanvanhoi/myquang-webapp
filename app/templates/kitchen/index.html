@@ -25,13 +25,15 @@
     </div>
 
     <div class="flex items-center gap-2 text-xs text-gray-400">
-      <button @click="toggleSound()"
-              :title="soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'"
-              :class="soundEnabled ? 'bg-amber-100 text-amber-700 border-amber-300' : 'bg-white text-gray-500 border-gray-200'"
-              class="flex items-center gap-1 px-2 h-7 rounded border transition-colors">
-        <i :data-lucide="soundEnabled ? 'volume-2' : 'volume-x'" class="w-3.5 h-3.5"></i>
-        <span x-text="soundEnabled ? 'Đang bật' : 'Tắt'"></span>
-      </button>
+      <span x-show="!audioUnlocked"
+            class="flex items-center gap-1 px-2 h-7 rounded border border-amber-300 bg-amber-50 text-amber-700 font-medium">
+        <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
+        Chạm màn hình để bật loa
+      </span>
+      <span x-show="audioUnlocked" class="flex items-center gap-1 text-green-600 font-medium">
+        <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
+        Âm thanh bật
+      </span>
       <span x-show="!refreshing" class="flex items-center gap-1">
         <span class="w-2 h-2 rounded-full bg-green-500"></span>
         Auto-refresh 3s · cập nhật <span x-text="lastUpdate"></span>
@@ -141,9 +143,10 @@ function kitchenApp(initial) {
     busyTables: new Set(),
     busyItems: new Set(),
     lastUpdate: 'vừa xong',
-    soundEnabled: localStorage.getItem('kitchen_sound') === '1',
+    audioUnlocked: false,
     _pollerId: null,
     _unloadHandler: null,
+    _unlockHandler: null,
     _seenIds: new Set(),
     _lastSig: '',
     _audioCtx: null,
@@ -156,12 +159,50 @@ function kitchenApp(initial) {
       this._pollerId = setInterval(() => this.refresh(), 3000);
       this._unloadHandler = () => this.cleanup();
       window.addEventListener('beforeunload', this._unloadHandler);
+      this.bindAudioUnlock();
       this.$nextTick(() => lucide.createIcons());
     },
 
     cleanup() {
       if (this._pollerId) { clearInterval(this._pollerId); this._pollerId = null; }
+      if (this._unlockHandler) {
+        document.removeEventListener('pointerdown', this._unlockHandler);
+        document.removeEventListener('keydown', this._unlockHandler);
+        this._unlockHandler = null;
+      }
       if (this._audioCtx) { this._audioCtx.close().catch(() => {}); this._audioCtx = null; }
+    },
+
+    bindAudioUnlock() {
+      if (this._unlockHandler) return;
+      this._unlockHandler = () => {
+        this.unlockAudio(true);
+      };
+      document.addEventListener('pointerdown', this._unlockHandler);
+      document.addEventListener('keydown', this._unlockHandler);
+    },
+
+    async unlockAudio(testBeep) {
+      this.ensureAudio();
+      if (!this._audioCtx) return false;
+      try {
+        if (this._audioCtx.state === 'suspended') {
+          await this._audioCtx.resume();
+        }
+        this.audioUnlocked = this._audioCtx.state === 'running';
+        if (this.audioUnlocked && testBeep) {
+          await this.beep();
+        }
+        if (this.audioUnlocked && this._unlockHandler) {
+          document.removeEventListener('pointerdown', this._unlockHandler);
+          document.removeEventListener('keydown', this._unlockHandler);
+          this._unlockHandler = null;
+          this.$nextTick(() => lucide.createIcons());
+        }
+        return this.audioUnlocked;
+      } catch (e) {
+        return false;
+      }
     },
 
     annotate(rawItems) {
@@ -185,16 +226,6 @@ function kitchenApp(initial) {
       return this.items.reduce((n, it) => n + (it._served ? 0 : 1), 0);
     },
 
-    toggleSound() {
-      this.soundEnabled = !this.soundEnabled;
-      localStorage.setItem('kitchen_sound', this.soundEnabled ? '1' : '0');
-      if (this.soundEnabled) {
-        this.ensureAudio();
-        this.beep();
-      }
-      this.$nextTick(() => lucide.createIcons());
-    },
-
     ensureAudio() {
       if (!this._audioCtx) {
         try {
@@ -207,25 +238,35 @@ function kitchenApp(initial) {
       }
     },
 
-    beep(tones) {
-      if (!this.soundEnabled || !this._audioCtx) return;
-      const ctx = this._audioCtx;
-      const sequence = tones || [880, 1175];
-      const now = ctx.currentTime;
-      sequence.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = freq;
-        const start = now + i * 0.18;
-        gain.gain.setValueAtTime(0, start);
-        gain.gain.linearRampToValueAtTime(0.18, start + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.16);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(start);
-        osc.stop(start + 0.18);
-      });
+    async beep(tones) {
+      this.ensureAudio();
+      if (!this._audioCtx) return;
+      try {
+        if (this._audioCtx.state === 'suspended') {
+          await this._audioCtx.resume();
+        }
+        if (this._audioCtx.state !== 'running') return;
+
+        const ctx = this._audioCtx;
+        const sequence = tones || [880, 1175, 880];
+        const now = ctx.currentTime;
+        sequence.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          const start = now + i * 0.22;
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(0.45, start + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.2);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(start);
+          osc.stop(start + 0.22);
+        });
+      } catch (e) {
+        // ignore — browser may block until user gesture
+      }
     },
 
     get itemsByTable() {
@@ -305,7 +346,9 @@ function kitchenApp(initial) {
           }
           this.items = merged;
           this._seenIds = new Set(this.items.map(it => it.id));
-          if (newIds.length > 0) this.beep();
+          if (newIds.length > 0) {
+            this.beep().catch(() => {});
+          }
           // Lucide icons trong row mới (data-lucide="check") cần render lại sau Alpine re-render.
           this.$nextTick(() => lucide.createIcons());
         }
