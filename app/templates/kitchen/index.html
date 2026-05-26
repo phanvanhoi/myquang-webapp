@@ -24,15 +24,26 @@
       <span class="font-semibold text-gray-800" x-text="unservedTotal"></span> món đang chờ
     </div>
 
-    <div class="flex items-center gap-2 text-xs text-gray-400">
-      <span x-show="!audioUnlocked"
-            class="flex items-center gap-1 px-2 h-7 rounded border border-amber-300 bg-amber-50 text-amber-700 font-medium">
-        <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
-        Chạm màn hình để bật loa
+    <div class="flex items-center gap-2 text-xs text-gray-400 flex-wrap justify-end">
+      <button x-show="!audioUnlocked" @click="unlockAudio(true)"
+              type="button"
+              class="flex items-center gap-1.5 px-3 h-8 rounded-lg border-2 border-amber-400 bg-amber-100 text-amber-800 font-semibold animate-pulse">
+        <i data-lucide="volume-2" class="w-4 h-4"></i>
+        Bật loa bếp
+      </button>
+      <span x-show="!audioUnlocked && _pendingBeeps > 0"
+            class="text-amber-700 font-medium">
+        Có món mới — bấm bật loa
       </span>
-      <span x-show="audioUnlocked" class="flex items-center gap-1 text-green-600 font-medium">
+      <button x-show="audioUnlocked" @click="testAlertSound()" type="button"
+              class="flex items-center gap-1 text-green-700 font-medium px-2 h-7 rounded border border-green-200 bg-green-50">
         <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
-        Âm thanh bật
+        Âm thanh bật · thử
+      </button>
+      <span x-show="audioUnlocked && unservedTotal > 0"
+            class="flex items-center gap-1 text-red-600 font-semibold animate-pulse">
+        <i data-lucide="bell-ring" class="w-3.5 h-3.5"></i>
+        Đang nhắc món
       </span>
       <span x-show="!refreshing" class="flex items-center gap-1">
         <span class="w-2 h-2 rounded-full bg-green-500"></span>
@@ -49,6 +60,9 @@
       </button>
     </div>
   </div>
+
+  <audio id="kitchenAlertAudio" src="/kitchen-alert.wav" preload="auto"
+         playsinline webkit-playsinline x-ref="alertAudio" class="hidden"></audio>
 
   {# ── Empty state ── #}
   <template x-if="itemsByTable.length === 0">
@@ -144,63 +158,216 @@ function kitchenApp(initial) {
     busyItems: new Set(),
     lastUpdate: 'vừa xong',
     audioUnlocked: false,
+    _pendingBeeps: 0,
+    ALERT_REPEAT_MS: 8000,
     _pollerId: null,
+    _alertLoopId: null,
+    _alertPlaying: false,
     _unloadHandler: null,
     _unlockHandler: null,
+    _visibilityHandler: null,
     _seenIds: new Set(),
     _lastSig: '',
     _audioCtx: null,
+    _alertAudio: null,
+    _wakeLock: null,
 
     init() {
       this.items = this.annotate(initial);
       this._lastSig = this.signature(initial);
       this.items.forEach(it => this._seenIds.add(it.id));
       this.lastUpdate = this.formatTime(new Date());
+      this._alertAudio = this.$refs.alertAudio || document.getElementById('kitchenAlertAudio');
       this._pollerId = setInterval(() => this.refresh(), 3000);
       this._unloadHandler = () => this.cleanup();
       window.addEventListener('beforeunload', this._unloadHandler);
       this.bindAudioUnlock();
+      this.bindVisibilityHandler();
+      this.syncAlertLoop();
       this.$nextTick(() => lucide.createIcons());
     },
 
     cleanup() {
       if (this._pollerId) { clearInterval(this._pollerId); this._pollerId = null; }
-      if (this._unlockHandler) {
-        document.removeEventListener('pointerdown', this._unlockHandler);
-        document.removeEventListener('keydown', this._unlockHandler);
-        this._unlockHandler = null;
+      this.stopAlertLoop();
+      this.unbindAudioUnlock();
+      if (this._visibilityHandler) {
+        document.removeEventListener('visibilitychange', this._visibilityHandler);
+        this._visibilityHandler = null;
       }
+      this.releaseWakeLock();
       if (this._audioCtx) { this._audioCtx.close().catch(() => {}); this._audioCtx = null; }
+    },
+
+    bindVisibilityHandler() {
+      if (this._visibilityHandler) return;
+      this._visibilityHandler = () => {
+        if (document.visibilityState === 'visible' && this.audioUnlocked) {
+          const ctx = this.ensureAudioContext();
+          if (ctx && ctx.state === 'suspended') {
+            ctx.resume().catch(() => this.markAudioLocked());
+          }
+          this.requestWakeLock();
+          this.syncAlertLoop();
+        }
+      };
+      document.addEventListener('visibilitychange', this._visibilityHandler);
     },
 
     bindAudioUnlock() {
       if (this._unlockHandler) return;
       this._unlockHandler = () => {
-        this.unlockAudio(true);
+        if (!this.audioUnlocked) this.unlockAudio(false);
       };
+      document.addEventListener('touchstart', this._unlockHandler, { passive: true });
       document.addEventListener('pointerdown', this._unlockHandler);
-      document.addEventListener('keydown', this._unlockHandler);
     },
 
-    async unlockAudio(testBeep) {
-      this.ensureAudio();
-      if (!this._audioCtx) return false;
+    unbindAudioUnlock() {
+      if (!this._unlockHandler) return;
+      document.removeEventListener('touchstart', this._unlockHandler);
+      document.removeEventListener('pointerdown', this._unlockHandler);
+      this._unlockHandler = null;
+    },
+
+    markAudioLocked() {
+      this.audioUnlocked = false;
+      this.stopAlertLoop();
+      this.releaseWakeLock();
+      this.bindAudioUnlock();
+      this.$nextTick(() => lucide.createIcons());
+    },
+
+    async requestWakeLock() {
+      if (!('wakeLock' in navigator)) return;
       try {
-        if (this._audioCtx.state === 'suspended') {
-          await this._audioCtx.resume();
+        if (this._wakeLock) return;
+        this._wakeLock = await navigator.wakeLock.request('screen');
+        this._wakeLock.addEventListener('release', () => { this._wakeLock = null; });
+      } catch (e) {}
+    },
+
+    releaseWakeLock() {
+      if (this._wakeLock) {
+        this._wakeLock.release().catch(() => {});
+        this._wakeLock = null;
+      }
+    },
+
+    ensureAudioElement() {
+      if (!this._alertAudio) {
+        this._alertAudio = document.getElementById('kitchenAlertAudio');
+      }
+      return this._alertAudio;
+    },
+
+    ensureAudioContext() {
+      if (!this._audioCtx) {
+        try {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          if (Ctx) this._audioCtx = new Ctx();
+        } catch (e) {}
+      }
+      if (this._audioCtx && !this._ctxStateBound) {
+        this._ctxStateBound = true;
+        this._audioCtx.onstatechange = () => {
+          if (this._audioCtx && this._audioCtx.state === 'suspended') {
+            this.markAudioLocked();
+          }
+        };
+      }
+      return this._audioCtx;
+    },
+
+    async unlockAudio(playTest) {
+      try {
+        const ctx = this.ensureAudioContext();
+        if (ctx && ctx.state === 'suspended') {
+          await ctx.resume();
         }
-        this.audioUnlocked = this._audioCtx.state === 'running';
-        if (this.audioUnlocked && testBeep) {
-          await this.beep();
+
+        const el = this.ensureAudioElement();
+        if (el) {
+          el.volume = 0.01;
+          el.currentTime = 0;
+          await el.play();
+          el.pause();
+          el.currentTime = 0;
+          el.volume = 1;
         }
-        if (this.audioUnlocked && this._unlockHandler) {
-          document.removeEventListener('pointerdown', this._unlockHandler);
-          document.removeEventListener('keydown', this._unlockHandler);
-          this._unlockHandler = null;
-          this.$nextTick(() => lucide.createIcons());
+
+        this.audioUnlocked = true;
+        this.unbindAudioUnlock();
+        await this.requestWakeLock();
+
+        if (playTest) {
+          await this.playAlertSound();
         }
-        return this.audioUnlocked;
+        this.syncAlertLoop(playTest);
+        this.$nextTick(() => lucide.createIcons());
+        return true;
       } catch (e) {
+        this.markAudioLocked();
+        return false;
+      }
+    },
+
+    async testAlertSound() {
+      const ok = await this.playAlertSound();
+      if (!ok) this.markAudioLocked();
+    },
+
+    async playAlertSound() {
+      if (!this.audioUnlocked) {
+        this._pendingBeeps++;
+        return false;
+      }
+      const el = this.ensureAudioElement();
+      if (el) {
+        try {
+          el.currentTime = 0;
+          el.volume = 1;
+          await el.play();
+          this._pendingBeeps = 0;
+          return true;
+        } catch (e) {
+          // fall through to Web Audio
+        }
+      }
+      return this.beepWebAudio();
+    },
+
+    async beepWebAudio(tones) {
+      const ctx = this.ensureAudioContext();
+      if (!ctx) return false;
+      try {
+        if (ctx.state === 'suspended') {
+          await ctx.resume();
+        }
+        if (ctx.state !== 'running') {
+          this.markAudioLocked();
+          return false;
+        }
+        const sequence = tones || [880, 1175, 880];
+        const now = ctx.currentTime;
+        sequence.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          const start = now + i * 0.22;
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(0.7, start + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.2);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(start);
+          osc.stop(start + 0.22);
+        });
+        this._pendingBeeps = 0;
+        return true;
+      } catch (e) {
+        this.markAudioLocked();
         return false;
       }
     },
@@ -226,46 +393,53 @@ function kitchenApp(initial) {
       return this.items.reduce((n, it) => n + (it._served ? 0 : 1), 0);
     },
 
-    ensureAudio() {
-      if (!this._audioCtx) {
-        try {
-          const Ctx = window.AudioContext || window.webkitAudioContext;
-          this._audioCtx = new Ctx();
-        } catch (e) {}
+    syncAlertLoop(skipImmediate) {
+      if (this.unservedTotal <= 0) {
+        this.stopAlertLoop();
+        this._pendingBeeps = 0;
+        return;
       }
-      if (this._audioCtx && this._audioCtx.state === 'suspended') {
-        this._audioCtx.resume();
+      if (!this.audioUnlocked) {
+        this._pendingBeeps = 1;
+        return;
+      }
+      this.startAlertLoop(skipImmediate);
+    },
+
+    startAlertLoop(skipImmediate) {
+      if (this._alertLoopId) return;
+      this._alertLoopId = setInterval(() => this.tickAlertLoop(), this.ALERT_REPEAT_MS);
+      if (!skipImmediate) {
+        this.tickAlertLoop();
       }
     },
 
-    async beep(tones) {
-      this.ensureAudio();
-      if (!this._audioCtx) return;
-      try {
-        if (this._audioCtx.state === 'suspended') {
-          await this._audioCtx.resume();
-        }
-        if (this._audioCtx.state !== 'running') return;
+    stopAlertLoop() {
+      if (this._alertLoopId) {
+        clearInterval(this._alertLoopId);
+        this._alertLoopId = null;
+      }
+    },
 
-        const ctx = this._audioCtx;
-        const sequence = tones || [880, 1175, 880];
-        const now = ctx.currentTime;
-        sequence.forEach((freq, i) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.value = freq;
-          const start = now + i * 0.22;
-          gain.gain.setValueAtTime(0, start);
-          gain.gain.linearRampToValueAtTime(0.45, start + 0.02);
-          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.2);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(start);
-          osc.stop(start + 0.22);
-        });
-      } catch (e) {
-        // ignore — browser may block until user gesture
+    async tickAlertLoop() {
+      if (this.unservedTotal <= 0) {
+        this.stopAlertLoop();
+        return;
+      }
+      if (!this.audioUnlocked) {
+        this._pendingBeeps = 1;
+        return;
+      }
+      if (this._alertPlaying) return;
+      this._alertPlaying = true;
+      try {
+        const ok = await this.playAlertSound();
+        if (!ok) this._pendingBeeps = 1;
+      } finally {
+        this._alertPlaying = false;
+      }
+      if (this.unservedTotal <= 0) {
+        this.stopAlertLoop();
       }
     },
 
@@ -327,10 +501,10 @@ function kitchenApp(initial) {
             this.items.forEach(it => {
               it._age = Math.floor((Date.now() - new Date(it.created_at.replace(' ', 'T')).getTime()) / 60000);
             });
+            this.syncAlertLoop();
             return;
           }
           this._lastSig = sig;
-          const newIds = data.items.filter(it => !this._seenIds.has(it.id)).map(it => it.id);
 
           // Merge: server trả pending/preparing thôi. Giữ _served của local (cook đã tick rồi)
           // để card không "xóa xanh" giữa chừng.
@@ -346,9 +520,7 @@ function kitchenApp(initial) {
           }
           this.items = merged;
           this._seenIds = new Set(this.items.map(it => it.id));
-          if (newIds.length > 0) {
-            this.beep().catch(() => {});
-          }
+          this.syncAlertLoop();
           // Lucide icons trong row mới (data-lucide="check") cần render lại sau Alpine re-render.
           this.$nextTick(() => lucide.createIcons());
         }
@@ -380,6 +552,7 @@ function kitchenApp(initial) {
       try {
         await this._serveIds([it.id]);
         it._served = true;
+        this.syncAlertLoop();
       } catch (e) {
         alert(e.message || 'Lỗi kết nối, thử lại');
       } finally {
@@ -398,6 +571,7 @@ function kitchenApp(initial) {
       try {
         await this._serveIds(ids);
         unserved.forEach(it => { it._served = true; });
+        this.syncAlertLoop();
       } catch (e) {
         alert(e.message || 'Lỗi kết nối, thử lại');
       } finally {
