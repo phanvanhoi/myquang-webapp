@@ -337,7 +337,7 @@ function kitchenApp(initial) {
       return this.beepWebAudio();
     },
 
-    async beepWebAudio(tones) {
+    async beepWebAudio() {
       const ctx = this.ensureAudioContext();
       if (!ctx) return false;
       try {
@@ -348,22 +348,46 @@ function kitchenApp(initial) {
           this.markAudioLocked();
           return false;
         }
-        const sequence = tones || [880, 1175, 880];
+
         const now = ctx.currentTime;
-        sequence.forEach((freq, i) => {
+
+        // Pop click (fallback khi file WAV không phát được)
+        const popLen = Math.floor(ctx.sampleRate * 0.045);
+        const pop = ctx.createBuffer(1, popLen, ctx.sampleRate);
+        const popData = pop.getChannelData(0);
+        for (let i = 0; i < popLen; i++) {
+          const t = i / ctx.sampleRate;
+          popData[i] = (Math.random() * 2 - 1) * 0.35 * Math.exp(-t * 55);
+        }
+        const popSrc = ctx.createBufferSource();
+        popSrc.buffer = pop;
+        const popGain = ctx.createGain();
+        popGain.gain.value = 0.5;
+        popSrc.connect(popGain);
+        popGain.connect(ctx.destination);
+        popSrc.start(now);
+
+        // Ascending chime — giống file kitchen-alert.wav
+        const chimes = [
+          { freq: 880, start: 0.055, dur: 0.09, vol: 0.55 },
+          { freq: 1174.66, start: 0.13, dur: 0.11, vol: 0.62 },
+          { freq: 1567.98, start: 0.22, dur: 0.14, vol: 0.68 },
+        ];
+        chimes.forEach(({ freq, start, dur, vol }) => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
           osc.type = 'sine';
           osc.frequency.value = freq;
-          const start = now + i * 0.22;
-          gain.gain.setValueAtTime(0, start);
-          gain.gain.linearRampToValueAtTime(0.7, start + 0.02);
-          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.2);
+          const t0 = now + start;
+          gain.gain.setValueAtTime(0, t0);
+          gain.gain.linearRampToValueAtTime(vol, t0 + 0.008);
+          gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
           osc.connect(gain);
           gain.connect(ctx.destination);
-          osc.start(start);
-          osc.stop(start + 0.22);
+          osc.start(t0);
+          osc.stop(t0 + dur + 0.02);
         });
+
         this._pendingBeeps = 0;
         return true;
       } catch (e) {
