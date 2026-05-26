@@ -1,8 +1,14 @@
 const crypto = require('crypto');
 const { wantsJson } = require('../lib/http');
 
-// Public JSON endpoint — không dùng session CSRF
+// Public JSON endpoints — không dùng session CSRF
 const SKIP_PATHS = ['/order/submit'];
+
+function csrfShouldSkip(path) {
+  if (SKIP_PATHS.includes(path)) return true;
+  if (/^\/t\/[a-f0-9]{32}\/submit$/.test(path)) return true;
+  return false;
+}
 
 function ensureCsrfToken(req) {
   if (!req.session) return '';
@@ -19,7 +25,7 @@ function csrfTokenMiddleware(req, res, next) {
 
 function csrfProtect(req, res, next) {
   if (req.method !== 'POST') return next();
-  if (SKIP_PATHS.includes(req.path)) return next();
+  if (csrfShouldSkip(req.path)) return next();
 
   const token = (req.body && req.body._csrf) || req.get('X-CSRF-Token');
   const expected = req.session && req.session.csrfToken;

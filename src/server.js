@@ -131,6 +131,7 @@ app.use('/orders',  require('./routes/orders'));
 app.use('/kitchen', require('./routes/kitchen'));
 app.use('/payments',require('./routes/payments'));
 app.use('/order',   require('./routes/public'));    // public, không yêu cầu login
+app.use('/t',       require('./routes/table-guest')); // QR gọi món tại bàn
 app.use('/finance', require('./routes/finance'));
 app.use('/reports', require('./routes/reports'));
 app.use('/dashboard',require('./routes/reports'));   // reports also handles /dashboard

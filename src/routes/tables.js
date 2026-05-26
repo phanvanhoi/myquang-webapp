@@ -11,6 +11,7 @@ const {
   sortTableEntries,
   MAX_VIRTUAL_PER_PARENT,
 } = require('../lib/virtual-tables');
+const { ensurePublicToken, guestOrderUrl } = require('../lib/table-guest');
 
 router.use(requireAuth);
 
@@ -239,6 +240,36 @@ router.post('/:id/status', (req, res) => {
   };
   res.flash('success', `Bàn ${table.name} đã chuyển sang trạng thái: ${statusLabels[status]}.`);
   res.redirect('/tables');
+});
+
+// ─────────────────────────────────────────────
+// GET /tables/:id/qr — QR gọi món (chỉ bàn thật)
+// ─────────────────────────────────────────────
+router.get('/:id/qr', (req, res) => {
+  const tableId = parseInt(req.params.id, 10);
+  const table = q.get(
+    `SELECT t.*, f.name AS floor_name
+     FROM tables t
+     JOIN floors f ON f.id = t.floor_id
+     WHERE t.id = ? AND t.is_active = 1 AND t.is_takeaway = 0
+       AND (t.is_virtual = 0 OR t.is_virtual IS NULL)`,
+    tableId
+  );
+
+  if (!table) {
+    res.flash('error', 'Bàn không tồn tại hoặc không hỗ trợ QR gọi món.');
+    return res.redirect('/tables');
+  }
+
+  const token = ensurePublicToken(tableId);
+  const url = guestOrderUrl(req, token);
+
+  res.render('tables/qr.html', {
+    table,
+    url,
+    token,
+    settings: q.getSettings(),
+  });
 });
 
 // ─────────────────────────────────────────────

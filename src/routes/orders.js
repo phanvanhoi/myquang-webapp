@@ -4,6 +4,7 @@ const { q } = require('../db');
 const { requireAuth, requireAdminOrCashier } = require('../middleware/auth');
 const { releaseTableIfEmpty } = require('./tables');
 const { afterOrderClosed } = require('../lib/virtual-tables');
+const { addItemsToOrder } = require('../lib/order-items');
 const { wantsJson } = require('../lib/http');
 
 function markOrderItemsServed(orderId) {
@@ -77,40 +78,7 @@ router.post('/:id/add-items', requireAuth, (req, res) => {
   }
 
   try {
-    const addItems = q.transaction(() => {
-      for (const entry of items) {
-        const menuItem = q.get(
-          `SELECT * FROM menu_items WHERE id = ? AND is_active = 1 AND is_available = 1`,
-          entry.item_id
-        );
-        if (!menuItem) {
-          throw new Error(`Món ID ${entry.item_id} không hợp lệ hoặc tạm hết`);
-        }
-        const qty = parseInt(entry.quantity) || 1;
-        const unit_price = menuItem.base_price;
-        const subtotal = qty * unit_price;
-        q.run(
-          `INSERT INTO order_items (order_id, item_id, quantity, unit_price, subtotal, note, status)
-           VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
-          parseInt(id),
-          menuItem.id,
-          qty,
-          unit_price,
-          subtotal,
-          entry.note || ''
-        );
-      }
-    });
-    addItems();
-
-    q.recalcOrder(parseInt(id));
-
-    if (order.status === 'open') {
-      q.run(
-        `UPDATE orders SET status = 'serving', updated_at = datetime('now','localtime') WHERE id = ?`,
-        id
-      );
-    }
+    addItemsToOrder(parseInt(id, 10), items);
 
     const redirectUrl = order.order_type === 'takeaway'
       ? '/takeaway/' + order.id

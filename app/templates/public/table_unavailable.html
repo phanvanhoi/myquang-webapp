@@ -1,0 +1,20 @@
+{% extends "public/base.html" %}
+{% block title %}Không khả dụng — {{ settings.restaurant_name or 'MyQuang' }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+  <div class="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mb-6">
+    <i data-lucide="qr-code" class="w-10 h-10 text-amber-500"></i>
+  </div>
+  <h1 class="text-2xl font-bold text-gray-800 mb-2">Liên kết không hợp lệ</h1>
+  <p class="text-gray-500 text-sm max-w-sm">
+    Mã QR này không còn dùng được. Vui lòng quét lại mã trên bàn hoặc gọi nhân viên hỗ trợ.
+  </p>
+  {% if settings.restaurant_phone %}
+  <p class="mt-6 text-sm text-amber-700 font-medium">
+    <i data-lucide="phone" class="w-4 h-4 inline-block"></i>
+    {{ settings.restaurant_phone }}
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

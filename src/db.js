@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS tables (
   is_takeaway INTEGER NOT NULL DEFAULT 0,
   is_virtual INTEGER NOT NULL DEFAULT 0,
   parent_table_id INTEGER REFERENCES tables(id) ON DELETE SET NULL,
+  public_token TEXT UNIQUE,
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
@@ -229,6 +230,7 @@ ensureColumn('orders', 'customer_address', 'TEXT');
 ensureColumn('orders', 'customer_note',    'TEXT');
 ensureColumn('tables', 'is_virtual',       'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('tables', 'parent_table_id',  'INTEGER REFERENCES tables(id) ON DELETE SET NULL');
+ensureColumn('tables', 'public_token',     'TEXT');
 
 // ── Helper query functions ──
 

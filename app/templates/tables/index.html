@@ -404,6 +404,18 @@
                       </button>
                     </form>
                     {% endif %}
+
+                    {% if not tbl.is_virtual %}
+                    <a
+                      href="/tables/{{ tbl.id }}/qr"
+                      class="w-full h-8 border border-amber-300 bg-amber-50 hover:bg-amber-100
+                             text-amber-800 text-xs font-semibold rounded-lg transition
+                             flex items-center justify-center gap-1"
+                    >
+                      <i data-lucide="qr-code" class="w-3 h-3"></i>
+                      QR gọi món
+                    </a>
+                    {% endif %}
                   </div>
 
                 </div>{# /card body #}
