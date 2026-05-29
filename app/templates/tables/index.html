@@ -496,6 +496,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/pos-move.js"></script>
 <script>
 function floorPlanMove() {
   return {
@@ -519,12 +520,11 @@ function floorPlanMove() {
       this.moveTables = [];
       this.moveFetching = true;
       try {
-        const resp = await fetch(`/tables/available-for-move?exclude_table_id=${sourceTableId}`);
-        const data = await resp.json();
+        const data = await fetchMoveJson(`/tables/available-for-move?exclude_table_id=${sourceTableId}`);
         this.moveTables = data.tables || [];
         this.$nextTick(() => lucide.createIcons());
       } catch (e) {
-        alert('Không tải được danh sách bàn, thử lại');
+        alert(e.message || 'Không tải được danh sách bàn, thử lại');
         this.moveOpen = false;
       } finally {
         this.moveFetching = false;
@@ -535,19 +535,14 @@ function floorPlanMove() {
       if (this.moveLoading || !this.moveSelected || !this.moveOrderId) return;
       this.moveLoading = true;
       try {
-        const resp = await fetch(`/orders/${this.moveOrderId}/move-table`, {
+        const data = await fetchMoveJson(`/orders/${this.moveOrderId}/move-table`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ target_table_id: this.moveSelected, return_to: 'floor' }),
         });
-        const data = await resp.json();
-        if (data.success) {
-          window.location.href = data.redirect;
-        } else {
-          alert(data.error || 'Có lỗi khi chuyển bàn');
-        }
+        window.location.href = data.redirect;
       } catch (e) {
-        alert('Lỗi kết nối, thử lại');
+        alert(e.message || 'Có lỗi khi chuyển bàn');
       } finally {
         this.moveLoading = false;
       }

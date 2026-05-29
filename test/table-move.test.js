@@ -171,6 +171,36 @@ test('moveOrderToTable deactivates empty virtual source table', () => {
   }
 });
 
+test('failed move rolls back without partial table or order changes', () => {
+  const tmp = path.join(os.tmpdir(), `myquang-move-rollback-${Date.now()}.db`);
+  const lockDir = tmp + '.lock';
+  try {
+    const { q } = loadDb(tmp);
+    const move = require('../src/lib/table-move');
+    const { userId, table1, table2, table3 } = seedFloor(q);
+    const orderId = openOrder(q, table1, userId, 'ORD-ROLLBACK');
+
+    assert.throws(
+      () => move.moveOrderToTable(orderId, table3, userId),
+      /không còn trống/
+    );
+
+    const order = q.get(`SELECT table_id, note FROM orders WHERE id = ?`, orderId);
+    const src = q.get(`SELECT status FROM tables WHERE id = ?`, table1);
+    const dst = q.get(`SELECT status FROM tables WHERE id = ?`, table3);
+    const spare = q.get(`SELECT status FROM tables WHERE id = ?`, table2);
+
+    assert.strictEqual(order.table_id, table1);
+    assert.strictEqual(order.note, null);
+    assert.strictEqual(src.status, 'occupied');
+    assert.strictEqual(dst.status, 'occupied');
+    assert.strictEqual(spare.status, 'available');
+  } finally {
+    if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
+    if (fs.existsSync(lockDir)) fs.rmSync(lockDir, { recursive: true, force: true });
+  }
+});
+
 test('listAvailableMoveTargets excludes source table', () => {
   const tmp = path.join(os.tmpdir(), `myquang-move5-${Date.now()}.db`);
   const lockDir = tmp + '.lock';

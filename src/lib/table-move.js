@@ -146,6 +146,7 @@ function moveOrderToTable(orderId, targetTableId, userId) {
       throw new Error('Order đã thay đổi. Vui lòng thử lại.');
     }
 
+    // Cleanup bàn nguồn trong cùng transaction — rollback nếu bất kỳ bước nào fail.
     releaseSourceAfterMove(fresh.table_id);
   })();
 

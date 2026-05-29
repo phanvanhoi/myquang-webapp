@@ -432,6 +432,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/pos-move.js"></script>
 <script>
 function posOrder(menuItems, orderId, serverItemCount, existingTotal) {
   return {
@@ -523,12 +524,11 @@ function posOrder(menuItems, orderId, serverItemCount, existingTotal) {
       this.moveTables = [];
       this.moveFetching = true;
       try {
-        const resp = await fetch(`/tables/available-for-move?exclude_table_id=${_posTableId}`);
-        const data = await resp.json();
+        const data = await fetchMoveJson(`/tables/available-for-move?exclude_table_id=${_posTableId}`);
         this.moveTables = data.tables || [];
         this.$nextTick(() => lucide.createIcons());
       } catch (e) {
-        alert('Không tải được danh sách bàn, thử lại');
+        alert(e.message || 'Không tải được danh sách bàn, thử lại');
         this.moveOpen = false;
       } finally {
         this.moveFetching = false;
@@ -539,19 +539,14 @@ function posOrder(menuItems, orderId, serverItemCount, existingTotal) {
       if (this.moveLoading || !this.moveSelected) return;
       this.moveLoading = true;
       try {
-        const resp = await fetch(`/orders/${this.orderId}/move-table`, {
+        const data = await fetchMoveJson(`/orders/${this.orderId}/move-table`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ target_table_id: this.moveSelected, return_to: 'floor' }),
         });
-        const data = await resp.json();
-        if (data.success) {
-          window.location.href = data.redirect;
-        } else {
-          alert(data.error || 'Có lỗi khi chuyển bàn');
-        }
+        window.location.href = data.redirect;
       } catch (e) {
-        alert('Lỗi kết nối, thử lại');
+        alert(e.message || 'Có lỗi khi chuyển bàn');
       } finally {
         this.moveLoading = false;
       }
