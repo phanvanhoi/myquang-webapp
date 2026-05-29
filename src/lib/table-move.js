@@ -93,39 +93,61 @@ function moveOrderToTable(orderId, targetTableId, userId) {
     targetTableId
   );
   if (!targetTable) throw new Error('Bàn đích không tồn tại hoặc không hợp lệ.');
-  if (targetTable.status !== 'available') {
-    throw new Error('Chỉ chuyển được sang bàn đang trống.');
-  }
-  if (hasActiveOrders(targetTableId)) {
-    throw new Error('Bàn đích đã có order đang mở.');
-  }
 
   const sourceLabel = sourceTable?.name || sourceTable?.code || `#${order.table_id}`;
   const targetLabel = targetTable.name || targetTable.code || `#${targetTableId}`;
   const user = userId ? q.get(`SELECT full_name, username FROM users WHERE id = ?`, userId) : null;
   const userLabel = user?.full_name || user?.username || 'staff';
-  const auditNote = `[Chuyển bàn ${sourceLabel} → ${targetLabel} bởi ${userLabel} lúc ${new Date().toLocaleString('vi-VN', { hour12: false })}]`;
-
-  const oldTableId = order.table_id;
 
   q.transaction(() => {
-    q.run(
+    const ts = q.get(`SELECT datetime('now','localtime') AS ts`).ts;
+    const auditNote = `[Chuyển bàn ${sourceLabel} → ${targetLabel} bởi ${userLabel} lúc ${ts}]`;
+
+    const fresh = q.get(
+      `SELECT * FROM orders
+       WHERE id = ? AND order_type = 'dine_in' AND status IN ('open','serving')`,
+      orderId
+    );
+    if (!fresh) {
+      throw new Error('Order không còn ở trạng thái có thể chuyển.');
+    }
+    if (fresh.table_id === targetTableId) {
+      throw new Error('Order đã ở bàn này.');
+    }
+
+    const claimTarget = q.run(
+      `UPDATE tables
+       SET status = 'occupied', updated_at = datetime('now','localtime')
+       WHERE id = ?
+         AND is_active = 1 AND is_takeaway = 0 AND is_virtual = 0
+         AND status = 'available'
+         AND NOT EXISTS (
+           SELECT 1 FROM orders o
+           WHERE o.table_id = tables.id AND o.status IN ('open','serving')
+         )`,
+      targetTableId
+    );
+    if (claimTarget.changes !== 1) {
+      throw new Error('Bàn đích không còn trống. Vui lòng chọn bàn khác.');
+    }
+
+    const moved = q.run(
       `UPDATE orders
        SET table_id = ?,
            note = COALESCE(note || ' ', '') || ?,
            updated_at = datetime('now','localtime')
-       WHERE id = ?`,
+       WHERE id = ? AND table_id = ?`,
       targetTableId,
       auditNote,
-      orderId
+      orderId,
+      fresh.table_id
     );
-    q.run(
-      `UPDATE tables SET status = 'occupied', updated_at = datetime('now','localtime') WHERE id = ?`,
-      targetTableId
-    );
-  })();
+    if (moved.changes !== 1) {
+      throw new Error('Order đã thay đổi. Vui lòng thử lại.');
+    }
 
-  releaseSourceAfterMove(oldTableId);
+    releaseSourceAfterMove(fresh.table_id);
+  })();
 
   return q.get(`SELECT * FROM orders WHERE id = ?`, orderId);
 }

@@ -88,7 +88,29 @@ test('moveOrderToTable rejects non-available target', () => {
 
     assert.throws(
       () => move.moveOrderToTable(orderId, table3, userId),
-      /bàn đang trống/
+      /không còn trống/
+    );
+  } finally {
+    if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
+    if (fs.existsSync(lockDir)) fs.rmSync(lockDir, { recursive: true, force: true });
+  }
+});
+
+test('moveOrderToTable rejects second move to same target table', () => {
+  const tmp = path.join(os.tmpdir(), `myquang-move2b-${Date.now()}.db`);
+  const lockDir = tmp + '.lock';
+  try {
+    const { q } = loadDb(tmp);
+    const move = require('../src/lib/table-move');
+    const { userId, table1, table2, table3 } = seedFloor(q);
+    const orderA = openOrder(q, table1, userId, 'ORD-MOVE-A2');
+    const orderB = openOrder(q, table3, userId, 'ORD-MOVE-B2');
+
+    move.moveOrderToTable(orderA, table2, userId);
+
+    assert.throws(
+      () => move.moveOrderToTable(orderB, table2, userId),
+      /không còn trống/
     );
   } finally {
     if (fs.existsSync(tmp)) fs.unlinkSync(tmp);

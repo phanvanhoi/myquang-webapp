@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { q } = require('../db');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireAdminOrCashier } = require('../middleware/auth');
 const {
   countActiveVirtualChildren,
   createVirtualTable,
@@ -11,7 +11,7 @@ const {
   sortTableEntries,
   MAX_VIRTUAL_PER_PARENT,
 } = require('../lib/virtual-tables');
-const { ensurePublicToken, guestOrderUrl } = require('../lib/table-guest');
+const { ensurePublicToken, guestOrderUrl, countActiveDineInOrders } = require('../lib/table-guest');
 const { listAvailableMoveTargets } = require('../lib/table-move');
 
 router.use(requireAuth);
@@ -72,6 +72,7 @@ router.get('/', (req, res) => {
     active_virtual_count: table.is_virtual
       ? 0
       : countActiveVirtualChildren(table.id),
+    active_order_count: countActiveDineInOrders(table.id),
   }));
 
   // 5. Build floors_data structure used by index.html template
@@ -142,7 +143,7 @@ router.get('/', (req, res) => {
 // ─────────────────────────────────────────────
 // GET /tables/available-for-move — bàn trống cho modal đổi bàn (JSON)
 // ─────────────────────────────────────────────
-router.get('/available-for-move', (req, res) => {
+router.get('/available-for-move', requireAdminOrCashier, (req, res) => {
   const excludeId = parseInt(req.query.exclude_table_id, 10);
   const excludeTableId = Number.isInteger(excludeId) ? excludeId : null;
   const tables = listAvailableMoveTargets(excludeTableId);
