@@ -5,6 +5,7 @@ const { requireAuth, requireAdminOrCashier } = require('../middleware/auth');
 const { releaseTableIfEmpty } = require('./tables');
 const { afterOrderClosed } = require('../lib/virtual-tables');
 const { addItemsToOrder } = require('../lib/order-items');
+const { moveOrderToTable } = require('../lib/table-move');
 const { wantsJson } = require('../lib/http');
 
 function markOrderItemsServed(orderId) {
@@ -275,6 +276,29 @@ router.post('/:id/cancel', requireAdminOrCashier, (req, res) => {
   afterOrderClosed(order);
   res.flash('success', 'Đã huỷ order');
   res.redirect('/tables');
+});
+
+// ─────────────────────────────────────────────
+// POST /orders/:id/move-table — Chuyển order sang bàn trống khác
+// ─────────────────────────────────────────────
+router.post('/:id/move-table', requireAdminOrCashier, (req, res) => {
+  const orderId = parseInt(req.params.id, 10);
+  const targetTableId = parseInt(req.body.target_table_id, 10);
+
+  if (!Number.isInteger(targetTableId)) {
+    return res.status(400).json({ success: false, error: 'Chưa chọn bàn đích' });
+  }
+
+  try {
+    const updated = moveOrderToTable(orderId, targetTableId, req.session.userId);
+    const redirect = req.body.return_to === 'floor' ? '/tables' : posUrlFor(updated);
+    return res.json({
+      success: true,
+      redirect,
+    });
+  } catch (err) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
 });
 
 // ─────────────────────────────────────────────

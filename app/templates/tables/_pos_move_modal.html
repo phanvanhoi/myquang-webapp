@@ -1,0 +1,77 @@
+{# Move-table modal (shared desktop/mobile).
+   Alpine context: moveOpen, moveTables, moveSelected, moveLoading, moveFetching,
+                   openMoveModal, submitMove. #}
+<div x-show="moveOpen" x-cloak x-transition
+     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+     @click.self="moveOpen = false">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col" @click.stop>
+    <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+      <div class="font-semibold text-gray-800 flex items-center gap-2">
+        <i data-lucide="move-right" class="w-4 h-4 text-amber-500"></i>
+        Đổi bàn
+      </div>
+      <button @click="moveOpen = false" aria-label="Đóng"
+              class="text-gray-400 hover:text-gray-600">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <div class="px-5 py-3 text-xs text-gray-500 border-b border-gray-50 bg-gray-50">
+      Chọn bàn trống để chuyển toàn bộ order (giữ nguyên món đã gọi và đang làm).
+    </div>
+
+    <div class="flex-1 overflow-y-auto">
+      <template x-if="moveFetching">
+        <div class="py-12 text-center text-sm text-gray-400">
+          <span class="inline-block w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mb-2"></span>
+          <div>Đang tải danh sách bàn...</div>
+        </div>
+      </template>
+
+      <template x-if="!moveFetching && moveTables.length === 0">
+        <div class="py-12 text-center text-sm text-gray-400">Không có bàn trống để chuyển.</div>
+      </template>
+
+      <template x-if="!moveFetching">
+        <div class="divide-y divide-gray-100">
+          <template x-for="tb in moveTables" :key="tb.id">
+            <label class="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-amber-50/50 transition-colors">
+              <input type="radio"
+                     name="move_target"
+                     :value="tb.id"
+                     x-model.number="moveSelected"
+                     class="w-4 h-4 border-gray-300 text-amber-500 focus:ring-amber-400 shrink-0" />
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-gray-800" x-text="tb.name"></div>
+                <div class="text-xs text-gray-400">
+                  <span x-text="tb.floor_name"></span>
+                  <template x-if="tb.room_name">
+                    <span> · <span x-text="tb.room_name"></span></span>
+                  </template>
+                  · <span x-text="tb.code"></span>
+                </div>
+              </div>
+              <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0">Trống</span>
+            </label>
+          </template>
+        </div>
+      </template>
+    </div>
+
+    <div class="px-5 py-3 border-t border-gray-100 flex items-center gap-2 bg-gray-50">
+      <button @click="moveOpen = false"
+              class="flex-1 h-10 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-white transition">
+        Đóng
+      </button>
+      <button @click="submitMove()"
+              :disabled="moveLoading || moveFetching || !moveSelected"
+              class="flex-1 h-10 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold transition disabled:bg-gray-300">
+        <span x-show="!moveLoading">Xác nhận chuyển</span>
+        <span x-show="moveLoading" class="inline-flex items-center gap-1.5">
+          <span class="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+          Đang chuyển...
+        </span>
+      </button>
+    </div>
+  </div>
+</div>

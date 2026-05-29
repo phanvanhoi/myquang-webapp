@@ -12,6 +12,7 @@ const {
   MAX_VIRTUAL_PER_PARENT,
 } = require('../lib/virtual-tables');
 const { ensurePublicToken, guestOrderUrl } = require('../lib/table-guest');
+const { listAvailableMoveTargets } = require('../lib/table-move');
 
 router.use(requireAuth);
 
@@ -136,6 +137,16 @@ router.get('/', (req, res) => {
     maxVirtualPerParent: MAX_VIRTUAL_PER_PARENT,
     showTableQr: false, // tạm ẩn nút QR gọi món trên sơ đồ bàn
   });
+});
+
+// ─────────────────────────────────────────────
+// GET /tables/available-for-move — bàn trống cho modal đổi bàn (JSON)
+// ─────────────────────────────────────────────
+router.get('/available-for-move', (req, res) => {
+  const excludeId = parseInt(req.query.exclude_table_id, 10);
+  const excludeTableId = Number.isInteger(excludeId) ? excludeId : null;
+  const tables = listAvailableMoveTargets(excludeTableId);
+  return res.json({ success: true, tables });
 });
 
 // ─────────────────────────────────────────────

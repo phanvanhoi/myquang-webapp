@@ -83,6 +83,7 @@
 <script>
   const _posMenuItems       = {{ menuItems | tojson | safe }};
   const _posOrderId         = {{ order.id }};
+  const _posTableId         = {{ table.id }};
   const _posServerItemCount = {{ items | length }};
   const _posExistingTotal   = {{ order.total_amount or 0 }};
   // Items có thể tách (chưa cancelled) — chỉ id+name+qty+subtotal cho modal
@@ -203,19 +204,25 @@
       </button>
 
       {% if session.role == 'admin' or session.role == 'cashier' %}
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-3 gap-2">
         <button type="button" @click="splitOpen = true"
                 :disabled="splitItems.length < 2"
                 class="h-9 rounded-xl border border-amber-200 text-amber-600 hover:bg-amber-50 text-xs font-medium
-                       flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                       flex items-center justify-center gap-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
           <i data-lucide="split" class="w-3.5 h-3.5"></i>
           Tách HĐ
         </button>
+        <button type="button" @click="openMoveModal()"
+                class="h-9 rounded-xl border border-blue-200 text-blue-600 hover:bg-blue-50 text-xs font-medium
+                       flex items-center justify-center gap-1 transition-colors">
+          <i data-lucide="move-right" class="w-3.5 h-3.5"></i>
+          Đổi bàn
+        </button>
         <button type="button" @click="cancelOpen = true"
                 class="h-9 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 text-xs font-medium
-                       flex items-center justify-center gap-1.5 transition-colors">
+                       flex items-center justify-center gap-1 transition-colors">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-          Hủy order
+          Hủy
         </button>
       </div>
       {% endif %}
@@ -223,6 +230,7 @@
 
     {% if session.role == 'admin' or session.role == 'cashier' %}
     {% include "tables/_pos_split_modal.html" %}
+    {% include "tables/_pos_move_modal.html" %}
     {# Cancel modal — at root of x-data so position:fixed escapes cleanly #}
     <div x-show="cancelOpen" x-cloak x-transition
          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
@@ -361,19 +369,25 @@
             <span x-text="cart.length > 0 ? 'Gửi bếp + Thanh toán' : 'Thanh toán'"></span>
           </button>
           {% if session.role == 'admin' or session.role == 'cashier' %}
-          <div class="grid grid-cols-2 gap-2">
+          <div class="grid grid-cols-3 gap-2">
             <button type="button" @click="splitOpen = true"
                     :disabled="splitItems.length < 2"
-                    class="h-10 rounded-xl border border-amber-200 text-amber-600 active:bg-amber-50 text-sm font-medium
-                           flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40">
-              <i data-lucide="split" class="w-4 h-4"></i>
+                    class="h-10 rounded-xl border border-amber-200 text-amber-600 active:bg-amber-50 text-xs font-medium
+                           flex items-center justify-center gap-1 transition-colors disabled:opacity-40">
+              <i data-lucide="split" class="w-3.5 h-3.5"></i>
               Tách HĐ
             </button>
+            <button type="button" @click="openMoveModal()"
+                    class="h-10 rounded-xl border border-blue-200 text-blue-600 active:bg-blue-50 text-xs font-medium
+                           flex items-center justify-center gap-1 transition-colors">
+              <i data-lucide="move-right" class="w-3.5 h-3.5"></i>
+              Đổi bàn
+            </button>
             <button type="button" @click="cancelOpen = true"
-                    class="h-10 rounded-xl border border-red-200 text-red-500 active:bg-red-50 text-sm font-medium
-                           flex items-center justify-center gap-1.5 transition-colors">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
-              Hủy order
+                    class="h-10 rounded-xl border border-red-200 text-red-500 active:bg-red-50 text-xs font-medium
+                           flex items-center justify-center gap-1 transition-colors">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              Hủy
             </button>
           </div>
           {% endif %}
@@ -384,6 +398,7 @@
 
   {% if session.role == 'admin' or session.role == 'cashier' %}
   {% include "tables/_pos_split_modal.html" %}
+  {% include "tables/_pos_move_modal.html" %}
   {# Cancel modal — at root of x-data so position:fixed escapes the sheet cleanly #}
   <div x-show="cancelOpen" x-cloak x-transition
        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
@@ -432,6 +447,11 @@ function posOrder(menuItems, orderId, serverItemCount, existingTotal) {
     splitSelected: [],
     splitItems: (typeof _posSplittable !== 'undefined') ? _posSplittable : [],
     splitLoading: false,
+    moveOpen: false,
+    moveTables: [],
+    moveSelected: null,
+    moveLoading: false,
+    moveFetching: false,
     sending: false,
 
     get filteredItems() {
@@ -494,6 +514,46 @@ function posOrder(menuItems, orderId, serverItemCount, existingTotal) {
         alert('Lỗi kết nối, thử lại');
       } finally {
         this.splitLoading = false;
+      }
+    },
+
+    async openMoveModal() {
+      this.moveOpen = true;
+      this.moveSelected = null;
+      this.moveTables = [];
+      this.moveFetching = true;
+      try {
+        const resp = await fetch(`/tables/available-for-move?exclude_table_id=${_posTableId}`);
+        const data = await resp.json();
+        this.moveTables = data.tables || [];
+        this.$nextTick(() => lucide.createIcons());
+      } catch (e) {
+        alert('Không tải được danh sách bàn, thử lại');
+        this.moveOpen = false;
+      } finally {
+        this.moveFetching = false;
+      }
+    },
+
+    async submitMove() {
+      if (this.moveLoading || !this.moveSelected) return;
+      this.moveLoading = true;
+      try {
+        const resp = await fetch(`/orders/${this.orderId}/move-table`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target_table_id: this.moveSelected, return_to: 'floor' }),
+        });
+        const data = await resp.json();
+        if (data.success) {
+          window.location.href = data.redirect;
+        } else {
+          alert(data.error || 'Có lỗi khi chuyển bàn');
+        }
+      } catch (e) {
+        alert('Lỗi kết nối, thử lại');
+      } finally {
+        this.moveLoading = false;
       }
     },
 
