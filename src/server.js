@@ -21,6 +21,15 @@ process.on('uncaughtException', (err) => {
 // ── Seed on startup ──
 seed();
 
+try {
+  const { ensureInventoryItems, splitCombinedDrink, syncRecipes } = require('./migrate-inventory');
+  ensureInventoryItems();
+  splitCombinedDrink();
+  syncRecipes();
+} catch (err) {
+  console.error('[inventory-bootstrap]', err.message);
+}
+
 const isProduction = process.env.NODE_ENV === 'production';
 const sessionSecret = process.env.SECRET_KEY;
 if (isProduction && !sessionSecret) {
@@ -136,6 +145,7 @@ app.use('/finance', require('./routes/finance'));
 app.use('/reports', require('./routes/reports'));
 app.use('/dashboard',require('./routes/reports'));   // reports also handles /dashboard
 app.use('/settings',require('./routes/settings'));
+app.use('/inventory', require('./routes/inventory'));
 
 // ── 404 ──
 app.use((req, res) => {

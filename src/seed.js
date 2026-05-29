@@ -126,15 +126,21 @@ function seed() {
       [catComGa.lastInsertRowid,   'Cơm Gà Hội An (Phần Nhỏ)',      55000, 1],
       [catComGa.lastInsertRowid,   'Cơm Gà Hội An (Phần Đầy Đặn)',  65000, 2],
       // Giải Khát
-      [catDrink.lastInsertRowid,   'Pepsi / Coca Cola', 15000, 1],
-      [catDrink.lastInsertRowid,   'Trà Chanh / Quất',  15000, 2],
-      [catDrink.lastInsertRowid,   'Trà Sâm Dứa',        5000, 3],
-      [catDrink.lastInsertRowid,   'Nước Suối',         10000, 4],
+      [catDrink.lastInsertRowid,   'Coca Cola',         15000, 1],
+      [catDrink.lastInsertRowid,   'Pepsi',             15000, 2],
+      [catDrink.lastInsertRowid,   'Trà Chanh / Quất',  15000, 3],
+      [catDrink.lastInsertRowid,   'Trà Sâm Dứa',        5000, 4],
+      [catDrink.lastInsertRowid,   'Nước Suối',         10000, 5],
     ];
     menuItems.forEach(([cat, name, price, sort]) => {
       q.run(`INSERT INTO menu_items (category_id, name, base_price, sort_order) VALUES (?,?,?,?)`,
         cat, name, price, sort);
     });
+
+    const { ensureInventoryItems, splitCombinedDrink, syncRecipes } = require('./migrate-inventory');
+    ensureInventoryItems();
+    splitCombinedDrink();
+    syncRecipes();
 
     // ── Payment Methods ──
     ['Tiền mặt', 'Chuyển khoản', 'Momo'].forEach(name => {

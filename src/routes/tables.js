@@ -13,6 +13,7 @@ const {
 } = require('../lib/virtual-tables');
 const { ensurePublicToken, guestOrderUrl, countActiveDineInOrders } = require('../lib/table-guest');
 const { listAvailableMoveTargets } = require('../lib/table-move');
+const inventory = require('../lib/inventory');
 
 router.use(requireAuth);
 
@@ -395,6 +396,7 @@ router.post('/:id/close', (req, res) => {
 
   q.transaction(() => {
     openOrders.forEach(order => {
+      inventory.restoreOrderInventory(order.id, req.session.userId);
       q.run(
         `UPDATE order_items SET status = 'cancelled', updated_at = datetime('now','localtime')
          WHERE order_id = ? AND status != 'cancelled'`,

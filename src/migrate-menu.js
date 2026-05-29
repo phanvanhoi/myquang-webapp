@@ -55,7 +55,8 @@ const TARGET = [
     name: 'Giải Khát',
     sort: 6,
     items: [
-      ['Pepsi / Coca Cola', 15000],
+      ['Coca Cola', 15000],
+      ['Pepsi', 15000],
       ['Trà Chanh / Quất',  15000],
       ['Trà Sâm Dứa',        5000],
       ['Nước Suối',         10000],

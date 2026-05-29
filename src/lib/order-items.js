@@ -1,9 +1,12 @@
 const { q } = require('../db');
+const inventory = require('./inventory');
 
-function addItemsToOrderCore(orderId, items) {
+function addItemsToOrderCore(orderId, items, userId = null) {
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error('Không có món nào được chọn');
   }
+
+  inventory.validateCartStock(items);
 
   for (const entry of items) {
     const menuItem = q.get(
@@ -19,7 +22,7 @@ function addItemsToOrderCore(orderId, items) {
     }
     const unitPrice = menuItem.base_price;
     const subtotal = qty * unitPrice;
-    q.run(
+    const ins = q.run(
       `INSERT INTO order_items (order_id, item_id, quantity, unit_price, subtotal, note, status,
                                 created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, 'pending',
@@ -31,6 +34,7 @@ function addItemsToOrderCore(orderId, items) {
       subtotal,
       (entry.note || '').toString().slice(0, 200) || null
     );
+    inventory.deductForOrderItem(ins.lastInsertRowid, menuItem.id, qty, orderId, userId);
   }
 }
 
@@ -47,9 +51,9 @@ function finalizeOrderAfterItems(orderId) {
   return order;
 }
 
-function addItemsToOrder(orderId, items) {
+function addItemsToOrder(orderId, items, userId = null) {
   q.transaction(() => {
-    addItemsToOrderCore(orderId, items);
+    addItemsToOrderCore(orderId, items, userId);
   })();
   return finalizeOrderAfterItems(orderId);
 }

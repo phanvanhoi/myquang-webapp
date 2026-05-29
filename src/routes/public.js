@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { q } = require('../db');
+const { addItemsToOrderCore, finalizeOrderAfterItems } = require('../lib/order-items');
 
 // In-memory rate limit per phone — đủ MVP, reset khi container restart.
 const RATE_LIMIT_MS = 5 * 60 * 1000;
@@ -86,30 +87,9 @@ router.post('/submit', (req, res) => {
         table.id, user.id, orderCode, name, phone, address, note || null
       );
       orderId = r.lastInsertRowid;
-
-      for (const entry of items) {
-        const itemId = parseInt(entry.item_id);
-        const qty = parseInt(entry.quantity) || 1;
-        if (qty < 1 || qty > 99) {
-          throw new Error('Số lượng không hợp lệ');
-        }
-        const mi = q.get(
-          `SELECT * FROM menu_items WHERE id = ? AND is_active = 1 AND is_available = 1`,
-          itemId
-        );
-        if (!mi) throw new Error(`Một món trong giỏ đã hết hoặc không tồn tại`);
-
-        q.run(
-          `INSERT INTO order_items (order_id, item_id, quantity, unit_price, subtotal, note, status,
-                                    created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'pending',
-                   datetime('now','localtime'), datetime('now','localtime'))`,
-          orderId, mi.id, qty, mi.base_price, qty * mi.base_price,
-          (entry.note || '').toString().slice(0, 200) || null
-        );
-      }
+      addItemsToOrderCore(orderId, items, user.id);
     })();
-    q.recalcOrder(orderId);
+    finalizeOrderAfterItems(orderId);
     lastOrderByPhone.set(phone, Date.now());
     return res.json({ success: true, redirect: `/order/success/${orderCode}` });
   } catch (err) {

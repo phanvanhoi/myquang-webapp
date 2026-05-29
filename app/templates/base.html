@@ -115,6 +115,9 @@
     {% endif %}
     {% if session.role == 'admin' %}
     <div class="pt-3 pb-1 px-4 text-xs text-amber-400 uppercase tracking-wider">Quản trị</div>
+    <a href="/inventory" class="sidebar-link {{ 'active' if currentPath| startsWith('/inventory') }}">
+      <i data-lucide="boxes" class="w-4 h-4"></i> Tồn kho
+    </a>
     <a href="/settings" class="sidebar-link {{ 'active' if currentPath| startsWith('/settings') }}">
       <i data-lucide="settings" class="w-4 h-4"></i> Cài đặt
     </a>

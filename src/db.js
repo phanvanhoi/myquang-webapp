@@ -201,6 +201,42 @@ CREATE TABLE IF NOT EXISTS settings (
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 
+CREATE TABLE IF NOT EXISTS inventory_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  unit TEXT NOT NULL DEFAULT 'cái',
+  qty_on_hand INTEGER NOT NULL DEFAULT 0 CHECK (qty_on_hand >= 0),
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
+CREATE TABLE IF NOT EXISTS menu_item_recipes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  menu_item_id INTEGER NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
+  inventory_item_id INTEGER NOT NULL REFERENCES inventory_items(id) ON DELETE RESTRICT,
+  qty_per_serving INTEGER NOT NULL DEFAULT 1 CHECK (qty_per_serving > 0),
+  UNIQUE(menu_item_id, inventory_item_id)
+);
+
+CREATE TABLE IF NOT EXISTS inventory_movements (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  inventory_item_id INTEGER NOT NULL REFERENCES inventory_items(id) ON DELETE RESTRICT,
+  delta INTEGER NOT NULL,
+  qty_after INTEGER NOT NULL,
+  reason TEXT NOT NULL CHECK (reason IN ('sale','cancel','adjust','qty_change')),
+  order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+  order_item_id INTEGER REFERENCES order_items(id) ON DELETE SET NULL,
+  menu_item_id INTEGER REFERENCES menu_items(id) ON DELETE SET NULL,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  note TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_item ON inventory_movements(inventory_item_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_order_item ON inventory_movements(order_item_id);
+CREATE INDEX IF NOT EXISTS idx_menu_item_recipes_menu ON menu_item_recipes(menu_item_id);
+
 CREATE INDEX IF NOT EXISTS idx_tables_status ON tables(status);
 CREATE INDEX IF NOT EXISTS idx_orders_table_id ON orders(table_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);

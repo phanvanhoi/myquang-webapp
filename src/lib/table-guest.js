@@ -211,7 +211,7 @@ function submitGuestItems(token, items) {
       orderId = order.id;
     }
 
-    addItemsToOrderCore(orderId, items);
+    addItemsToOrderCore(orderId, items, user.id);
     finalizeOrderAfterItems(orderId);
   })();
 

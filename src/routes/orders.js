@@ -6,6 +6,7 @@ const { releaseTableIfEmpty } = require('./tables');
 const { afterOrderClosed } = require('../lib/virtual-tables');
 const { addItemsToOrder } = require('../lib/order-items');
 const { moveOrderToTable } = require('../lib/table-move');
+const inventory = require('../lib/inventory');
 const { wantsJson } = require('../lib/http');
 
 function markOrderItemsServed(orderId) {
@@ -79,7 +80,7 @@ router.post('/:id/add-items', requireAuth, (req, res) => {
   }
 
   try {
-    addItemsToOrder(parseInt(id, 10), items);
+    addItemsToOrder(parseInt(id, 10), items, req.session.userId);
 
     const redirectUrl = order.order_type === 'takeaway'
       ? '/takeaway/' + order.id
@@ -116,13 +117,39 @@ router.post('/:id/items/:itemId/cancel', requireAdminOrCashier, (req, res) => {
     return res.redirect(posUrlFor(order));
   }
 
-  q.run(
-    `UPDATE order_items
-     SET status = 'cancelled', updated_at = datetime('now','localtime')
-     WHERE id = ? AND order_id = ?`,
+  const line = q.get(
+    `SELECT * FROM order_items WHERE id = ? AND order_id = ? AND status != 'cancelled'`,
     itemId,
     id
   );
+  if (!line) {
+    if (req.is('application/json')) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy món' });
+    }
+    res.flash('error', 'Không tìm thấy món');
+    return res.redirect(posUrlFor(order));
+  }
+
+  try {
+    q.transaction(() => {
+      inventory.restoreForOrderItem(parseInt(itemId, 10), req.session.userId);
+      q.run(
+        `UPDATE order_items
+         SET status = 'cancelled', updated_at = datetime('now','localtime')
+         WHERE id = ? AND order_id = ?`,
+        itemId,
+        id
+      );
+    })();
+  } catch (err) {
+    const msg = err.message || 'Không thể huỷ món';
+    if (req.is('application/json')) {
+      return res.status(400).json({ success: false, error: msg });
+    }
+    res.flash('error', msg);
+    return res.redirect(posUrlFor(order));
+  }
+
   q.recalcOrder(parseInt(id));
   if (req.is('application/json')) {
     return res.json({ success: true });
@@ -159,15 +186,32 @@ router.post('/:id/items/:itemId/qty', requireAdminOrCashier, (req, res) => {
   if (item.status !== 'pending') {
     return res.status(400).json({ success: false, error: 'Chỉ sửa được món chưa gửi bếp' });
   }
-  const subtotal = quantity * item.unit_price;
-  q.run(
-    `UPDATE order_items
-     SET quantity = ?, subtotal = ?, updated_at = datetime('now','localtime')
-     WHERE id = ? AND order_id = ?`,
-    quantity, subtotal, itemId, id
-  );
+  try {
+    q.transaction(() => {
+      inventory.adjustOrderItemQty(
+        parseInt(itemId, 10),
+        item.item_id,
+        item.quantity,
+        quantity,
+        parseInt(id, 10),
+        req.session.userId
+      );
+      const subtotal = quantity * item.unit_price;
+      q.run(
+        `UPDATE order_items
+         SET quantity = ?, subtotal = ?, updated_at = datetime('now','localtime')
+         WHERE id = ? AND order_id = ?`,
+        quantity,
+        subtotal,
+        itemId,
+        id
+      );
+    })();
+  } catch (err) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
   q.recalcOrder(parseInt(id));
-  return res.json({ success: true, quantity, subtotal });
+  return res.json({ success: true, quantity, subtotal: quantity * item.unit_price });
 });
 
 // POST /:id/items/:itemId/note — Sửa ghi chú món (cho cả món đã gửi bếp)
@@ -262,6 +306,7 @@ router.post('/:id/cancel', requireAdminOrCashier, (req, res) => {
   // Cascade huỷ items để KDS không treo món pending mồ côi
   // (đồng bộ với pattern ở tables.js close + takeaway.js cancel).
   q.transaction(() => {
+    inventory.restoreOrderInventory(parseInt(id, 10), req.session.userId);
     q.run(
       `UPDATE order_items
        SET status = 'cancelled', updated_at = datetime('now','localtime')

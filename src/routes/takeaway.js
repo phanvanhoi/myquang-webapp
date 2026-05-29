@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { q } = require('../db');
+const inventory = require('../lib/inventory');
 const { requireAuth } = require('../middleware/auth');
 
 router.use(requireAuth);
@@ -111,6 +112,7 @@ router.post('/:orderId/cancel', (req, res) => {
   }
 
   const cancel = q.transaction(() => {
+    inventory.restoreOrderInventory(orderId, req.session.userId);
     q.run(
       `UPDATE order_items SET status = 'cancelled', updated_at = datetime('now','localtime')
        WHERE order_id = ? AND status != 'cancelled'`,

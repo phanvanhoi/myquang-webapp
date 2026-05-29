@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Tồn kho{% endblock %}
+{% block page_title %}Tồn kho{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+  <p class="text-sm text-gray-500">
+    Theo dõi Coca, Pepsi, Nước suối, Nem, Chả. Ba món bún <strong>Đặc biệt</strong> tự trừ 1 Nem + 1 Chả mỗi phần.
+    Chỉ admin được nhập tồn.
+  </p>
+
+  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for item in items %}
+    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+      <div class="flex items-start justify-between gap-2 mb-3">
+        <div>
+          <div class="font-semibold text-gray-800">{{ item.name }}</div>
+          <div class="text-xs text-gray-400">Đơn vị: {{ item.unit }}</div>
+        </div>
+        <div class="text-2xl font-bold tabular-nums
+          {% if item.qty_on_hand <= 5 %}text-red-600{% elif item.qty_on_hand <= 15 %}text-amber-600{% else %}text-green-700{% endif %}">
+          {{ item.qty_on_hand }}
+        </div>
+      </div>
+
+      <div class="flex gap-2 mb-2">
+        <form action="/inventory/{{ item.id }}/adjust" method="post" class="flex-1">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+          <input type="hidden" name="delta" value="-1" />
+          <button type="submit" class="w-full h-9 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">−1</button>
+        </form>
+        <form action="/inventory/{{ item.id }}/adjust" method="post" class="flex-1">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+          <input type="hidden" name="delta" value="1" />
+          <button type="submit" class="w-full h-9 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">+1</button>
+        </form>
+      </div>
+
+      <form action="/inventory/{{ item.id }}/adjust" method="post" class="space-y-2">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+        <input type="number" name="delta" placeholder="± số lượng (vd: 20, -5)"
+               class="w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none" />
+        <input type="text" name="note" maxlength="200" placeholder="Ghi chú (tuỳ chọn)"
+               class="w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none" />
+        <button type="submit"
+                class="w-full h-9 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold">
+          Cập nhật
+        </button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-100 font-semibold text-gray-800">Lịch sử gần đây</div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-gray-500">
+          <tr>
+            <th class="text-left px-4 py-2">Thời gian</th>
+            <th class="text-left px-4 py-2">Mặt hàng</th>
+            <th class="text-right px-4 py-2">Thay đổi</th>
+            <th class="text-right px-4 py-2">Còn lại</th>
+            <th class="text-left px-4 py-2">Lý do</th>
+            <th class="text-left px-4 py-2">Người thực hiện</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for m in movements %}
+          <tr>
+            <td class="px-4 py-2 text-gray-500 whitespace-nowrap">{{ m.created_at | dt }}</td>
+            <td class="px-4 py-2">{{ m.inventory_name }}</td>
+            <td class="px-4 py-2 text-right font-semibold
+              {% if m.delta > 0 %}text-green-600{% elif m.delta < 0 %}text-red-600{% endif %}">
+              {% if m.delta > 0 %}+{% endif %}{{ m.delta }}
+            </td>
+            <td class="px-4 py-2 text-right">{{ m.qty_after }}</td>
+            <td class="px-4 py-2 text-gray-600">{{ m.reason }}{% if m.note %} · {{ m.note }}{% endif %}</td>
+            <td class="px-4 py-2 text-gray-500">{{ m.user_name or '—' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">Chưa có biến động</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
