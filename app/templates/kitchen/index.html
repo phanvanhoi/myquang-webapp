@@ -14,7 +14,32 @@
   const _kitchenInitial = {{ items | tojson | safe }};
 </script>
 
-<div x-data="kitchenApp(_kitchenInitial)" x-init="init()" class="space-y-4">
+<div x-data="kitchenApp(_kitchenInitial)" x-init="init()" class="space-y-4 relative">
+
+  {# Overlay bắt buộc — iOS/PWA không cho phát tiếng trước khi user chạm #}
+  <div x-show="!audioUnlocked" x-cloak
+       class="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-5">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4">
+      <div class="w-16 h-16 mx-auto rounded-full bg-amber-100 flex items-center justify-center">
+        <i data-lucide="volume-2" class="w-8 h-8 text-amber-600"></i>
+      </div>
+      <div>
+        <h2 class="text-lg font-bold text-gray-900">Bật loa bếp</h2>
+        <p class="text-sm text-gray-500 mt-2 leading-relaxed">
+          Trình duyệt yêu cầu chạm màn hình một lần trước khi phát âm thanh.
+          Bấm nút bên dưới để nghe khi có món mới.
+        </p>
+      </div>
+      <p x-show="unservedTotal > 0"
+         class="text-sm font-semibold text-red-600 bg-red-50 rounded-lg py-2 px-3">
+        Đang có <span x-text="unservedTotal"></span> món chờ — bật loa để nghe nhắc
+      </p>
+      <button type="button" @click="unlockAudio(true)"
+              class="w-full h-12 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-base shadow-lg">
+        Bật loa ngay
+      </button>
+    </div>
+  </div>
 
   {# ── Toolbar ── #}
   <div class="flex flex-wrap items-center justify-between gap-3 bg-white rounded-xl shadow-sm border border-amber-100 px-4 py-3">
@@ -25,20 +50,14 @@
     </div>
 
     <div class="flex items-center gap-2 text-xs text-gray-400 flex-wrap justify-end">
-      <button x-show="!audioUnlocked" @click="unlockAudio(true)"
-              type="button"
-              class="flex items-center gap-1.5 px-3 h-8 rounded-lg border-2 border-amber-400 bg-amber-100 text-amber-800 font-semibold animate-pulse">
-        <i data-lucide="volume-2" class="w-4 h-4"></i>
-        Bật loa bếp
-      </button>
-      <span x-show="!audioUnlocked && _pendingBeeps > 0"
-            class="text-amber-700 font-medium">
-        Có món mới — bấm bật loa
+      <span x-show="audioUnlocked" class="flex items-center gap-1 text-green-700 font-medium px-2 h-7 rounded border border-green-200 bg-green-50">
+        <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
+        Loa đã bật
       </span>
       <button x-show="audioUnlocked" @click="testAlertSound()" type="button"
-              class="flex items-center gap-1 text-green-700 font-medium px-2 h-7 rounded border border-green-200 bg-green-50">
-        <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
-        Âm thanh bật · thử
+              class="flex items-center gap-1 text-gray-600 font-medium px-2 h-7 rounded border border-gray-200 bg-white hover:bg-gray-50">
+        <i data-lucide="bell" class="w-3.5 h-3.5"></i>
+        Thử tiếng
       </button>
       <span x-show="audioUnlocked && unservedTotal > 0"
             class="flex items-center gap-1 text-red-600 font-semibold animate-pulse">
@@ -159,9 +178,9 @@ function kitchenApp(initial) {
     lastUpdate: 'vừa xong',
     audioUnlocked: false,
     _pendingBeeps: 0,
-    ALERT_REPEAT_MS: 8000,
+    ALERT_GAP_MS: 10000,
     _pollerId: null,
-    _alertLoopId: null,
+    _alertLoopTimer: null,
     _alertPlaying: false,
     _unloadHandler: null,
     _unlockHandler: null,
@@ -319,7 +338,7 @@ function kitchenApp(initial) {
 
     async playAlertSound() {
       if (!this.audioUnlocked) {
-        this._pendingBeeps++;
+        this._pendingBeeps = 1;
         return false;
       }
       const el = this.ensureAudioElement();
@@ -328,6 +347,7 @@ function kitchenApp(initial) {
           el.currentTime = 0;
           el.volume = 1;
           await el.play();
+          await this.waitAudioEnd(el);
           this._pendingBeeps = 0;
           return true;
         } catch (e) {
@@ -335,6 +355,20 @@ function kitchenApp(initial) {
         }
       }
       return this.beepWebAudio();
+    },
+
+    waitAudioEnd(el) {
+      return new Promise(resolve => {
+        if (el.ended) {
+          resolve();
+          return;
+        }
+        const onEnd = () => {
+          el.removeEventListener('ended', onEnd);
+          resolve();
+        };
+        el.addEventListener('ended', onEnd);
+      });
     },
 
     async beepWebAudio() {
@@ -431,17 +465,21 @@ function kitchenApp(initial) {
     },
 
     startAlertLoop(skipImmediate) {
-      if (this._alertLoopId) return;
-      this._alertLoopId = setInterval(() => this.tickAlertLoop(), this.ALERT_REPEAT_MS);
-      if (!skipImmediate) {
+      if (this._alertLoopTimer || this._alertPlaying) return;
+      if (skipImmediate) {
+        this._alertLoopTimer = setTimeout(() => {
+          this._alertLoopTimer = null;
+          this.tickAlertLoop();
+        }, this.ALERT_GAP_MS);
+      } else {
         this.tickAlertLoop();
       }
     },
 
     stopAlertLoop() {
-      if (this._alertLoopId) {
-        clearInterval(this._alertLoopId);
-        this._alertLoopId = null;
+      if (this._alertLoopTimer) {
+        clearTimeout(this._alertLoopTimer);
+        this._alertLoopTimer = null;
       }
     },
 
@@ -464,7 +502,12 @@ function kitchenApp(initial) {
       }
       if (this.unservedTotal <= 0) {
         this.stopAlertLoop();
+        return;
       }
+      this._alertLoopTimer = setTimeout(() => {
+        this._alertLoopTimer = null;
+        this.tickAlertLoop();
+      }, this.ALERT_GAP_MS);
     },
 
     get itemsByTable() {
