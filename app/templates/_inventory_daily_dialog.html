@@ -1,5 +1,5 @@
 {# Dialog tồn kho đầu ngày — hiện mỗi ngày cho đến khi bấm "Hiểu rồi". #}
-<div x-data="inventoryDailyDialog({{ inventoryDaily.dateKey | tojson | safe }})"
+<div x-data='inventoryDailyDialog({{ inventoryDaily.dateKey | tojson | safe }})'
      x-init="init()"
      x-show="open"
      x-cloak
@@ -86,7 +86,7 @@
     <div class="px-5 py-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row gap-2">
       {% if session.role == 'admin' %}
       <a href="/inventory"
-         @click="acknowledge()"
+         @click.prevent="acknowledge(); window.location.assign('/inventory')"
          class="sm:flex-1 h-11 rounded-xl border border-amber-200 text-amber-800 text-sm font-semibold
                 flex items-center justify-center gap-1.5 hover:bg-amber-50 transition-colors">
         <i data-lucide="pencil-line" class="w-4 h-4"></i>

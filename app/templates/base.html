@@ -37,6 +37,32 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script defer src="https://unpkg.com/alpinejs@3.14.3/dist/cdn.min.js"></script>
+  <script>
+    /** localStorage key: myquang_inventory_daily_{YYYY-MM-DD} — theo từng máy, không theo user. */
+    function inventoryDailyDialog(dateKey) {
+      return {
+        open: false,
+        storageKey: 'myquang_inventory_daily_' + dateKey,
+        init() {
+          try {
+            if (localStorage.getItem(this.storageKey)) return;
+          } catch (_) {}
+          this.open = true;
+          document.body.classList.add('overflow-hidden');
+          this.$nextTick(function () {
+            if (window.lucide) lucide.createIcons();
+          });
+        },
+        acknowledge() {
+          try {
+            localStorage.setItem(this.storageKey, '1');
+          } catch (_) {}
+          this.open = false;
+          document.body.classList.remove('overflow-hidden');
+        },
+      };
+    }
+  </script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -179,27 +205,6 @@
 </div>
 
 <script>
-  /** localStorage key: myquang_inventory_daily_{YYYY-MM-DD} — theo từng máy, không theo user. */
-  function inventoryDailyDialog(dateKey) {
-    return {
-      open: false,
-      storageKey: 'myquang_inventory_daily_' + dateKey,
-      init() {
-        if (localStorage.getItem(this.storageKey)) return;
-        this.open = true;
-        document.body.classList.add('overflow-hidden');
-        this.$nextTick(function () {
-          if (window.lucide) lucide.createIcons();
-        });
-      },
-      acknowledge() {
-        localStorage.setItem(this.storageKey, '1');
-        this.open = false;
-        document.body.classList.remove('overflow-hidden');
-      },
-    };
-  }
-
   lucide.createIcons();
 
   (function () {
