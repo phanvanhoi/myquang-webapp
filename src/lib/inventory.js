@@ -275,6 +275,42 @@ function recentMovements(limit = 30) {
   );
 }
 
+function vietnamDateKey(date = new Date()) {
+  return date.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
+}
+
+/** Tóm tắt tồn kho cho dialog nhắc đầu ngày. */
+function buildDailySummary() {
+  const items = listInventoryItems();
+  const now = new Date();
+  const dateKey = vietnamDateKey(now);
+  const dateLabel = now.toLocaleDateString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const lowStockItems = items.filter((i) => i.qty_on_hand <= 5);
+
+  return {
+    dateKey,
+    dateLabel,
+    totalOnHand: items.reduce((sum, i) => sum + i.qty_on_hand, 0),
+    lowStockCount: lowStockItems.length,
+    lowStockNames: lowStockItems.map((i) => i.name),
+    lowStockNamesText: lowStockItems.map((i) => i.name).join(', '),
+    items: items.map((i) => ({
+      id: i.id,
+      code: i.code,
+      name: i.name,
+      unit: i.unit,
+      qty_on_hand: i.qty_on_hand,
+      level: i.qty_on_hand <= 5 ? 'low' : (i.qty_on_hand <= 15 ? 'warn' : 'ok'),
+    })),
+  };
+}
+
 module.exports = {
   SPECIAL_BUN_MENU_NAMES,
   DEFAULT_INVENTORY,
@@ -290,4 +326,6 @@ module.exports = {
   restoreOrderInventory,
   adminAdjustStock,
   recentMovements,
+  buildDailySummary,
+  vietnamDateKey,
 };

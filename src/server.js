@@ -115,6 +115,18 @@ app.use((req, res, next) => {
     res.locals.settings = {};
   }
 
+  if (
+    req.session.userId
+    && ['admin', 'cashier'].includes(req.session.role)
+  ) {
+    try {
+      const { buildDailySummary } = require('./lib/inventory');
+      res.locals.inventoryDaily = buildDailySummary();
+    } catch (_) {
+      res.locals.inventoryDaily = null;
+    }
+  }
+
   next();
 });
 

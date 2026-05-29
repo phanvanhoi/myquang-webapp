@@ -131,3 +131,28 @@ test('cancel order item restores inventory', () => {
     if (fs.existsSync(lockDir)) fs.rmSync(lockDir, { recursive: true, force: true });
   }
 });
+
+test('buildDailySummary returns inventory overview for daily dialog', () => {
+  const tmp = path.join(os.tmpdir(), `mq-inv-summary-${Date.now()}.db`);
+  const lockDir = tmp + '.lock';
+  try {
+    const { q } = loadDb(tmp);
+    const { ensureInventoryItems } = require('../src/migrate-inventory');
+    ensureInventoryItems();
+    const inventory = require('../src/lib/inventory');
+    q.run(`UPDATE inventory_items SET qty_on_hand = 20`);
+    q.run(`UPDATE inventory_items SET qty_on_hand = 3 WHERE code = 'nem'`);
+
+    const summary = inventory.buildDailySummary();
+    assert.ok(summary.dateKey);
+    assert.ok(summary.dateLabel);
+    assert.strictEqual(summary.items.length, 5);
+    assert.strictEqual(summary.lowStockCount, 1);
+    assert.ok(summary.lowStockNamesText.includes('Nem'));
+    const nem = summary.items.find((i) => i.code === 'nem');
+    assert.strictEqual(nem.level, 'low');
+  } finally {
+    if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
+    if (fs.existsSync(lockDir)) fs.rmSync(lockDir, { recursive: true, force: true });
+  }
+});

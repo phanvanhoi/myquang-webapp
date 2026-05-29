@@ -169,12 +169,37 @@
   </div>
   {% endif %}
 
+  {% if inventoryDaily %}
+  {% include "_inventory_daily_dialog.html" %}
+  {% endif %}
+
   <main class="flex-1 p-4 overflow-auto">
     {% block content %}{% endblock %}
   </main>
 </div>
 
 <script>
+  /** localStorage key: myquang_inventory_daily_{YYYY-MM-DD} — theo từng máy, không theo user. */
+  function inventoryDailyDialog(dateKey) {
+    return {
+      open: false,
+      storageKey: 'myquang_inventory_daily_' + dateKey,
+      init() {
+        if (localStorage.getItem(this.storageKey)) return;
+        this.open = true;
+        document.body.classList.add('overflow-hidden');
+        this.$nextTick(function () {
+          if (window.lucide) lucide.createIcons();
+        });
+      },
+      acknowledge() {
+        localStorage.setItem(this.storageKey, '1');
+        this.open = false;
+        document.body.classList.remove('overflow-hidden');
+      },
+    };
+  }
+
   lucide.createIcons();
 
   (function () {
