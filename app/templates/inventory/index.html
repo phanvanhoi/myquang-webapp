@@ -2,88 +2,291 @@
 {% block title %}Tồn kho{% endblock %}
 {% block page_title %}Tồn kho{% endblock %}
 
+{% block head %}
+<style>
+  .inv-card { transition: box-shadow .2s ease, transform .2s ease; }
+  .inv-card:hover { box-shadow: 0 8px 24px rgba(120, 53, 15, .08); }
+  .inv-stock-bar { transition: width .4s ease; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-5xl mx-auto space-y-6">
-  <p class="text-sm text-gray-500">
-    Theo dõi Coca, Pepsi, Nước suối, Nem, Chả. Ba món bún <strong>Đặc biệt</strong> tự trừ 1 Nem + 1 Chả mỗi phần.
-    Chỉ admin được nhập tồn.
-  </p>
+<div class="max-w-6xl mx-auto space-y-5">
 
-  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-    {% for item in items %}
-    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-      <div class="flex items-start justify-between gap-2 mb-3">
-        <div>
-          <div class="font-semibold text-gray-800">{{ item.name }}</div>
-          <div class="text-xs text-gray-400">Đơn vị: {{ item.unit }}</div>
-        </div>
-        <div class="text-2xl font-bold tabular-nums
-          {% if item.qty_on_hand <= 5 %}text-red-600{% elif item.qty_on_hand <= 15 %}text-amber-600{% else %}text-green-700{% endif %}">
-          {{ item.qty_on_hand }}
-        </div>
+  {# ── KPI ── #}
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-4 flex items-center gap-3">
+      <div class="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+        <i data-lucide="boxes" class="w-5 h-5 text-amber-600"></i>
       </div>
-
-      <div class="flex gap-2 mb-2">
-        <form action="/inventory/{{ item.id }}/adjust" method="post" class="flex-1">
-          <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
-          <input type="hidden" name="delta" value="-1" />
-          <button type="submit" class="w-full h-9 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">−1</button>
-        </form>
-        <form action="/inventory/{{ item.id }}/adjust" method="post" class="flex-1">
-          <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
-          <input type="hidden" name="delta" value="1" />
-          <button type="submit" class="w-full h-9 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">+1</button>
-        </form>
+      <div class="min-w-0">
+        <div class="text-xs text-gray-500 font-medium">Mặt hàng</div>
+        <div class="text-xl font-bold text-amber-700">{{ items | length }}</div>
+        <div class="text-xs text-gray-400">loại đang theo dõi</div>
       </div>
-
-      <form action="/inventory/{{ item.id }}/adjust" method="post" class="space-y-2">
-        <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
-        <input type="number" name="delta" placeholder="± số lượng (vd: 20, -5)"
-               class="w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none" />
-        <input type="text" name="note" maxlength="200" placeholder="Ghi chú (tuỳ chọn)"
-               class="w-full h-9 px-3 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none" />
-        <button type="submit"
-                class="w-full h-9 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold">
-          Cập nhật
-        </button>
-      </form>
     </div>
-    {% endfor %}
+
+    <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-4 flex items-center gap-3">
+      <div class="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+        <i data-lucide="package" class="w-5 h-5 text-blue-600"></i>
+      </div>
+      <div class="min-w-0">
+        <div class="text-xs text-gray-500 font-medium">Tổng tồn</div>
+        <div class="text-xl font-bold text-blue-600 tabular-nums">{{ totalOnHand }}</div>
+        <div class="text-xs text-gray-400">cái trong kho</div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border p-4 flex items-center gap-3
+      {% if lowStockItems | length %}border-red-200{% else %}border-green-100{% endif %}">
+      <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0
+        {% if lowStockItems | length %}bg-red-100{% else %}bg-green-100{% endif %}">
+        <i data-lucide="alert-triangle" class="w-5 h-5 {% if lowStockItems | length %}text-red-600{% else %}text-green-600{% endif %}"></i>
+      </div>
+      <div class="min-w-0">
+        <div class="text-xs text-gray-500 font-medium">Sắp hết (≤5)</div>
+        <div class="text-xl font-bold tabular-nums {% if lowStockItems | length %}text-red-600{% else %}text-green-600{% endif %}">
+          {{ lowStockItems | length }}
+        </div>
+        <div class="text-xs text-gray-400">cần nhập thêm</div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-amber-100 p-4 flex items-center gap-3">
+      <div class="w-11 h-11 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
+        <i data-lucide="history" class="w-5 h-5 text-orange-600"></i>
+      </div>
+      <div class="min-w-0">
+        <div class="text-xs text-gray-500 font-medium">Biến động</div>
+        <div class="text-xl font-bold text-orange-600 tabular-nums">{{ movements | length }}</div>
+        <div class="text-xs text-gray-400">gần đây</div>
+      </div>
+    </div>
   </div>
 
-  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-    <div class="px-4 py-3 border-b border-gray-100 font-semibold text-gray-800">Lịch sử gần đây</div>
+  {# ── Cảnh báo ── #}
+  {% if lowStockItems | length %}
+  <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-3">
+    <i data-lucide="alert-circle" class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"></i>
+    <div>
+      <div class="text-sm font-semibold text-red-800">Một số mặt hàng sắp hết</div>
+      <p class="text-sm text-red-700 mt-0.5">
+        {% for item in lowStockItems %}
+          <span class="inline-flex items-center gap-1 mr-2 mb-1">
+            <strong>{{ item.name }}</strong>
+            <span class="px-1.5 py-0.5 rounded bg-red-100 text-red-800 text-xs font-bold tabular-nums">{{ item.qty_on_hand }}</span>
+          </span>
+        {% endfor %}
+      </p>
+    </div>
+  </div>
+  {% elif warningItems | length %}
+  <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+    <i data-lucide="info" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
+    <div class="text-sm text-amber-900">
+      <span class="font-semibold">Theo dõi tồn:</span>
+      {% for item in warningItems %}{{ item.name }} ({{ item.qty_on_hand }}){% if not loop.last %}, {% endif %}{% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Hướng dẫn ── #}
+  <div class="rounded-xl border border-amber-100 bg-white px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-gray-500">
+    <span class="flex items-center gap-1.5"><i data-lucide="utensils" class="w-3.5 h-3.5 text-amber-600"></i> 3 món bún <strong class="text-gray-700">Đặc biệt</strong> trừ 1 Nem + 1 Chả/phần</span>
+    <span class="flex items-center gap-1.5"><i data-lucide="minus-circle" class="w-3.5 h-3.5 text-amber-600"></i> Huỷ món hoàn kho tự động</span>
+    <span class="flex items-center gap-1.5"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-amber-600"></i> Chỉ admin nhập tồn</span>
+  </div>
+
+  {# ── Thẻ mặt hàng ── #}
+  <div>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-sm font-semibold text-gray-700">Danh sách mặt hàng</h2>
+      <div class="flex items-center gap-3 text-xs text-gray-400">
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>Đủ</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>Trung bình</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>Thấp</span>
+      </div>
+    </div>
+
+    <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+      {% for item in items %}
+      {% set stock_pct = [((item.qty_on_hand / 30) * 100) | round, 100] | min %}
+      {% set stock_level = 'low' if item.qty_on_hand <= 5 else ('warn' if item.qty_on_hand <= 15 else 'ok') %}
+      {% if item.code == 'coca' %}
+        {% set icon = 'cup-soda' %}{% set accent = 'rose' %}
+      {% elif item.code == 'pepsi' %}
+        {% set icon = 'cup-soda' %}{% set accent = 'blue' %}
+      {% elif item.code == 'nuoc_suoi' %}
+        {% set icon = 'droplets' %}{% set accent = 'cyan' %}
+      {% elif item.code == 'nem' %}
+        {% set icon = 'circle-dot' %}{% set accent = 'orange' %}
+      {% elif item.code == 'cha' %}
+        {% set icon = 'beef' %}{% set accent = 'amber' %}
+      {% else %}
+        {% set icon = 'box' %}{% set accent = 'gray' %}
+      {% endif %}
+
+      <div class="inv-card bg-white border rounded-2xl overflow-hidden
+        {% if stock_level == 'low' %}border-red-200{% elif stock_level == 'warn' %}border-amber-200{% else %}border-amber-100{% endif %}"
+           x-data="{ showAdjust: false }">
+
+        <div class="p-4 pb-3">
+          <div class="flex items-start gap-3">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0
+              {% if accent == 'rose' %}bg-rose-100{% elif accent == 'blue' %}bg-blue-100{% elif accent == 'cyan' %}bg-cyan-100
+              {% elif accent == 'orange' %}bg-orange-100{% elif accent == 'amber' %}bg-amber-100{% else %}bg-gray-100{% endif %}">
+              <i data-lucide="{{ icon }}" class="w-6 h-6
+                {% if accent == 'rose' %}text-rose-600{% elif accent == 'blue' %}text-blue-600{% elif accent == 'cyan' %}text-cyan-600
+                {% elif accent == 'orange' %}text-orange-600{% elif accent == 'amber' %}text-amber-600{% else %}text-gray-600{% endif %}"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-semibold text-gray-800 truncate">{{ item.name }}</div>
+              <div class="text-xs text-gray-400 mt-0.5">Đơn vị: {{ item.unit }}</div>
+              {% if item.code in ['nem', 'cha'] %}
+              <span class="inline-block mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-orange-50 text-orange-700 border border-orange-100">
+                Nguyên liệu bún ĐB
+              </span>
+              {% elif item.code in ['coca', 'pepsi', 'nuoc_suoi'] %}
+              <span class="inline-block mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                Đồ uống
+              </span>
+              {% endif %}
+            </div>
+            <div class="text-right flex-shrink-0">
+              <div class="text-3xl font-bold tabular-nums leading-none
+                {% if stock_level == 'low' %}text-red-600{% elif stock_level == 'warn' %}text-amber-600{% else %}text-green-700{% endif %}">
+                {{ item.qty_on_hand }}
+              </div>
+              <div class="text-[10px] uppercase tracking-wide text-gray-400 mt-1">cái</div>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <div class="flex items-center justify-between text-[11px] text-gray-400 mb-1">
+              <span>Mức tồn</span>
+              <span>{% if stock_level == 'low' %}Cần nhập{% elif stock_level == 'warn' %}Theo dõi{% else %}Ổn định{% endif %}</span>
+            </div>
+            <div class="h-2 rounded-full bg-gray-100 overflow-hidden">
+              <div class="inv-stock-bar h-full rounded-full
+                {% if stock_level == 'low' %}bg-red-500{% elif stock_level == 'warn' %}bg-amber-400{% else %}bg-green-500{% endif %}"
+                   style="width: {{ stock_pct }}%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-4 pb-4 space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <form action="/inventory/{{ item.id }}/adjust" method="post">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+              <input type="hidden" name="delta" value="-1" />
+              <button type="submit"
+                      class="w-full h-10 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600
+                             hover:bg-red-50 hover:border-red-200 hover:text-red-700 transition-colors flex items-center justify-center gap-1">
+                <i data-lucide="minus" class="w-4 h-4"></i> 1
+              </button>
+            </form>
+            <form action="/inventory/{{ item.id }}/adjust" method="post">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+              <input type="hidden" name="delta" value="1" />
+              <button type="submit"
+                      class="w-full h-10 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600
+                             hover:bg-green-50 hover:border-green-200 hover:text-green-700 transition-colors flex items-center justify-center gap-1">
+                <i data-lucide="plus" class="w-4 h-4"></i> 1
+              </button>
+            </form>
+          </div>
+
+          <button type="button" @click="showAdjust = !showAdjust"
+                  class="w-full h-9 rounded-xl text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100
+                         border border-amber-100 transition-colors flex items-center justify-center gap-1">
+            <i data-lucide="pencil-line" class="w-3.5 h-3.5"></i>
+            <span x-text="showAdjust ? 'Ẩn nhập tay' : 'Nhập tay'"></span>
+          </button>
+
+          <form x-show="showAdjust" x-cloak action="/inventory/{{ item.id }}/adjust" method="post" class="space-y-2 pt-1">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+            <input type="number" name="delta" placeholder="± số lượng (vd: 20, -5)" required
+                   class="w-full h-10 px-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none" />
+            <input type="text" name="note" maxlength="200" placeholder="Ghi chú (tuỳ chọn)"
+                   class="w-full h-10 px-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none" />
+            <button type="submit"
+                    class="w-full h-10 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors">
+              Cập nhật tồn
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# ── Lịch sử ── #}
+  <div class="bg-white border border-amber-100 rounded-2xl overflow-hidden shadow-sm">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <i data-lucide="scroll-text" class="w-4 h-4 text-amber-600"></i>
+        <h2 class="text-sm font-semibold text-gray-800">Lịch sử biến động</h2>
+      </div>
+      <span class="text-xs text-gray-400">{{ movements | length }} bản ghi gần nhất</span>
+    </div>
+
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
-        <thead class="bg-gray-50 text-gray-500">
+        <thead class="bg-amber-50/60 text-gray-500 text-xs uppercase tracking-wide">
           <tr>
-            <th class="text-left px-4 py-2">Thời gian</th>
-            <th class="text-left px-4 py-2">Mặt hàng</th>
-            <th class="text-right px-4 py-2">Thay đổi</th>
-            <th class="text-right px-4 py-2">Còn lại</th>
-            <th class="text-left px-4 py-2">Lý do</th>
-            <th class="text-left px-4 py-2">Người thực hiện</th>
+            <th class="text-left px-5 py-3 font-semibold">Thời gian</th>
+            <th class="text-left px-5 py-3 font-semibold">Mặt hàng</th>
+            <th class="text-left px-5 py-3 font-semibold">Loại</th>
+            <th class="text-right px-5 py-3 font-semibold">Thay đổi</th>
+            <th class="text-right px-5 py-3 font-semibold">Còn lại</th>
+            <th class="text-left px-5 py-3 font-semibold hidden md:table-cell">Ghi chú</th>
+            <th class="text-left px-5 py-3 font-semibold hidden sm:table-cell">Người thực hiện</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
           {% for m in movements %}
-          <tr>
-            <td class="px-4 py-2 text-gray-500 whitespace-nowrap">{{ m.created_at | dt }}</td>
-            <td class="px-4 py-2">{{ m.inventory_name }}</td>
-            <td class="px-4 py-2 text-right font-semibold
-              {% if m.delta > 0 %}text-green-600{% elif m.delta < 0 %}text-red-600{% endif %}">
+          <tr class="hover:bg-amber-50/30 transition-colors">
+            <td class="px-5 py-3 text-gray-500 whitespace-nowrap text-xs">{{ m.created_at | dt }}</td>
+            <td class="px-5 py-3 font-medium text-gray-800">{{ m.inventory_name }}</td>
+            <td class="px-5 py-3">
+              {% if m.reason == 'sale' %}
+              <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-100">Bán hàng</span>
+              {% elif m.reason == 'cancel' %}
+              <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700 border border-green-100">Hoàn kho</span>
+              {% elif m.reason == 'qty_change' %}
+              <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-100">Đổi SL</span>
+              {% elif m.reason == 'adjust' %}
+              <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-violet-50 text-violet-700 border border-violet-100">Nhập tay</span>
+              {% else %}
+              <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-50 text-gray-600">{{ m.reason }}</span>
+              {% endif %}
+            </td>
+            <td class="px-5 py-3 text-right font-bold tabular-nums
+              {% if m.delta > 0 %}text-green-600{% elif m.delta < 0 %}text-red-600{% else %}text-gray-500{% endif %}">
               {% if m.delta > 0 %}+{% endif %}{{ m.delta }}
             </td>
-            <td class="px-4 py-2 text-right">{{ m.qty_after }}</td>
-            <td class="px-4 py-2 text-gray-600">{{ m.reason }}{% if m.note %} · {{ m.note }}{% endif %}</td>
-            <td class="px-4 py-2 text-gray-500">{{ m.user_name or '—' }}</td>
+            <td class="px-5 py-3 text-right tabular-nums text-gray-700">{{ m.qty_after }}</td>
+            <td class="px-5 py-3 text-gray-500 text-xs hidden md:table-cell max-w-[200px] truncate">{{ m.note or '—' }}</td>
+            <td class="px-5 py-3 text-gray-500 text-xs hidden sm:table-cell">{{ m.user_name or 'Hệ thống' }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">Chưa có biến động</td></tr>
+          <tr>
+            <td colspan="7" class="px-5 py-12 text-center">
+              <div class="flex flex-col items-center text-gray-400">
+                <i data-lucide="inbox" class="w-10 h-10 mb-2 opacity-40"></i>
+                <span class="text-sm">Chưa có biến động tồn kho</span>
+              </div>
+            </td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
   </div>
+
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>lucide.createIcons();</script>
 {% endblock %}

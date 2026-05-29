@@ -9,7 +9,16 @@ router.use(requireAdmin);
 router.get('/', (req, res) => {
   const items = inventory.listInventoryItems();
   const movements = inventory.recentMovements(40);
-  res.render('inventory/index.html', { items, movements });
+  const lowStockItems = items.filter((i) => i.qty_on_hand <= 5);
+  const warningItems = items.filter((i) => i.qty_on_hand > 5 && i.qty_on_hand <= 15);
+  const totalOnHand = items.reduce((sum, i) => sum + i.qty_on_hand, 0);
+  res.render('inventory/index.html', {
+    items,
+    movements,
+    lowStockItems,
+    warningItems,
+    totalOnHand,
+  });
 });
 
 router.post('/:id/adjust', (req, res) => {
