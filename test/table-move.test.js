@@ -51,7 +51,7 @@ function openOrder(q, tableId, userId, code) {
   return ins.lastInsertRowid;
 }
 
-test('moveOrderToTable updates table_id and sets source cleaning / target occupied', () => {
+test('moveOrderToTable updates table_id and sets source available / target occupied', () => {
   const tmp = path.join(os.tmpdir(), `myquang-move-${Date.now()}.db`);
   const lockDir = tmp + '.lock';
   try {
@@ -65,7 +65,7 @@ test('moveOrderToTable updates table_id and sets source cleaning / target occupi
 
     const src = q.get(`SELECT status FROM tables WHERE id = ?`, table1);
     const dst = q.get(`SELECT status FROM tables WHERE id = ?`, table2);
-    assert.strictEqual(src.status, 'cleaning');
+    assert.strictEqual(src.status, 'available');
     assert.strictEqual(dst.status, 'occupied');
 
     const note = q.get(`SELECT note FROM orders WHERE id = ?`, orderId).note;

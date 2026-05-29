@@ -29,7 +29,7 @@ function releasePhysicalAfterMove(physicalTableId) {
   if (childActive) return;
 
   q.run(
-    `UPDATE tables SET status = 'cleaning', updated_at = datetime('now','localtime')
+    `UPDATE tables SET status = 'available', updated_at = datetime('now','localtime')
      WHERE id = ? AND is_takeaway = 0 AND is_virtual = 0`,
     physicalTableId
   );

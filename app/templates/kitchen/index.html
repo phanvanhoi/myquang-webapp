@@ -440,8 +440,8 @@ function kitchenApp(initial) {
     },
 
     signature(rawItems) {
-      // Chỉ id/qty/note ảnh hưởng hiển thị (status không còn render).
-      return rawItems.map(it => `${it.id}:${it.quantity}:${it.note || ''}`).join('|');
+      // table_id để KDS cập nhật số bàn sau khi staff đổi bàn (id/qty/note không đổi).
+      return rawItems.map(it => `${it.id}:${it.quantity}:${it.note || ''}:${it.table_id || 0}`).join('|');
     },
 
     isTableBusy(tableId) { return this.busyTables.has(tableId); },
