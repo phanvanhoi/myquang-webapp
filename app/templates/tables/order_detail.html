@@ -18,6 +18,13 @@
   /* Mobile bottom sheet (chỉ áp dụng <lg) */
   @media (max-width: 1023px) {
     main { padding: 0 !important; }
+    /* Chiều cao cố định: handle + footer (tránh CLS khi Alpine/lucide hydrate) */
+    :root {
+      --pos-sheet-handle-h: 64px;
+      /* 60 = 8 + 44 (h-11) + 8 padding; cộng safe-area cho iPhone home indicator */
+      --pos-sheet-footer-h: calc(60px + env(safe-area-inset-bottom, 0px));
+      --pos-sheet-collapsed-h: calc(var(--pos-sheet-handle-h) + var(--pos-sheet-footer-h));
+    }
     /* dvh = dynamic viewport height: trừ thanh URL/toolbar iOS Safari thay vì 100vh
        (100vh trên iOS gồm cả phần thanh, làm sheet bị che) */
     .pos-mobile {
@@ -27,7 +34,7 @@
     }
     .menu-panel {
       height: 100%;
-      padding-bottom: 64px;
+      padding-bottom: var(--pos-sheet-collapsed-h);
       display: flex;
       flex-direction: column;
     }
@@ -38,20 +45,38 @@
       transition: height .28s cubic-bezier(.4,0,.2,1);
       display: flex; flex-direction: column;
       z-index: 30;
+      overflow: hidden;
     }
-    .sheet-collapsed { height: 64px; }
+    .sheet-collapsed { height: var(--pos-sheet-collapsed-h); }
     /* Bound bằng dvh + đảm bảo còn 80px top luôn thấy được trên màn hình ngắn */
     .sheet-expanded  { height: min(70dvh, calc(100dvh - 80px - 57px)); }
-    .sheet-handle    { height: 64px; flex-shrink: 0; }
+    .sheet-handle    { height: var(--pos-sheet-handle-h); flex-shrink: 0; }
     .cart-body {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
       overscroll-behavior: contain;
     }
     .sheet-footer {
       flex-shrink: 0;
+      min-height: var(--pos-sheet-footer-h);
       border-top: 1px solid #f3f4f6;
       padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+      contain: layout style;
+    }
+    /* Ổn định nút Gửi bếp — text Alpine/lucide không làm nhảy layout */
+    .sheet-footer .pos-send-btn {
+      min-height: 44px;
+    }
+    .sheet-footer .pos-send-label {
+      display: inline-block;
+      min-width: 9.5rem;
+      text-align: center;
+    }
+    .sheet-footer [data-lucide] {
+      width: 1rem;
+      height: 1rem;
+      flex-shrink: 0;
     }
     .sheet-backdrop {
       position: absolute; inset: 0;
@@ -333,10 +358,10 @@
                 x-text="totalItemCount"></span>
         </div>
         <div class="min-w-0 text-left">
-          <div class="text-xs text-gray-500 leading-tight">
+          <div class="text-xs text-gray-500 leading-tight tabular-nums">
             <span x-text="totalItemCount"></span> món · {{ table.name }}
           </div>
-          <div class="text-base font-bold text-amber-600 leading-tight" x-text="fmt(grandTotal)"></div>
+          <div class="text-base font-bold text-amber-600 leading-tight tabular-nums min-h-[1.25rem]" x-text="fmt(grandTotal)"></div>
         </div>
       </div>
       <div class="flex items-center gap-2 shrink-0">
