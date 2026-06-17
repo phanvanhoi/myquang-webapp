@@ -66,7 +66,7 @@
       </span>
       <span x-show="!refreshing" class="flex items-center gap-1">
         <span class="w-2 h-2 rounded-full bg-green-500"></span>
-        Auto-refresh 3s · cập nhật <span x-text="lastUpdate"></span>
+        Auto-refresh 8s · cập nhật <span x-text="lastUpdate"></span>
       </span>
       <span x-show="refreshing" class="flex items-center gap-1 text-amber-600">
         <span class="inline-block w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></span>
@@ -190,6 +190,7 @@ function kitchenApp(initial) {
     _audioCtx: null,
     _alertAudio: null,
     _wakeLock: null,
+    KITCHEN_POLL_MS: 8000,
 
     init() {
       this.items = this.annotate(initial);
@@ -197,17 +198,30 @@ function kitchenApp(initial) {
       this.items.forEach(it => this._seenIds.add(it.id));
       this.lastUpdate = this.formatTime(new Date());
       this._alertAudio = this.$refs.alertAudio || document.getElementById('kitchenAlertAudio');
-      this._pollerId = setInterval(() => this.refresh(), 3000);
+      this.startPoller();
       this._unloadHandler = () => this.cleanup();
       window.addEventListener('beforeunload', this._unloadHandler);
       this.bindAudioUnlock();
       this.bindVisibilityHandler();
       this.syncAlertLoop();
-      this.$nextTick(() => lucide.createIcons());
+      this.$nextTick(() => refreshLucide(this.$root));
+    },
+
+    startPoller() {
+      this.stopPoller();
+      if (document.visibilityState === 'hidden') return;
+      this._pollerId = setInterval(() => this.refresh(), this.KITCHEN_POLL_MS);
+    },
+
+    stopPoller() {
+      if (this._pollerId) {
+        clearInterval(this._pollerId);
+        this._pollerId = null;
+      }
     },
 
     cleanup() {
-      if (this._pollerId) { clearInterval(this._pollerId); this._pollerId = null; }
+      this.stopPoller();
       this.stopAlertLoop();
       this.unbindAudioUnlock();
       if (this._visibilityHandler) {
@@ -221,7 +235,13 @@ function kitchenApp(initial) {
     bindVisibilityHandler() {
       if (this._visibilityHandler) return;
       this._visibilityHandler = () => {
-        if (document.visibilityState === 'visible' && this.audioUnlocked) {
+        if (document.visibilityState === 'hidden') {
+          this.stopPoller();
+          return;
+        }
+        this.startPoller();
+        this.refresh();
+        if (this.audioUnlocked) {
           const ctx = this.ensureAudioContext();
           if (ctx && ctx.state === 'suspended') {
             ctx.resume().catch(() => this.markAudioLocked());
@@ -589,7 +609,7 @@ function kitchenApp(initial) {
           this._seenIds = new Set(this.items.map(it => it.id));
           this.syncAlertLoop();
           // Lucide icons trong row mới (data-lucide="check") cần render lại sau Alpine re-render.
-          this.$nextTick(() => lucide.createIcons());
+          this.$nextTick(() => refreshLucide(this.$root));
         }
       } catch (e) {
         // silent fail; will retry next interval

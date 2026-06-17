@@ -551,7 +551,7 @@ function posOrder(menuItems, orderId, serverItemCount, existingTotal) {
       try {
         const data = await fetchMoveJson(`/tables/available-for-move?exclude_table_id=${_posTableId}`);
         this.moveTables = data.tables || [];
-        this.$nextTick(() => lucide.createIcons());
+        this.$nextTick(() => refreshLucide(this.$root));
       } catch (e) {
         alert(e.message || 'Không tải được danh sách bàn, thử lại');
         this.moveOpen = false;
@@ -750,7 +750,6 @@ async function serverItemNote(orderId, itemId, el) {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
-document.addEventListener('alpine:mutated', () => lucide.createIcons());
+document.addEventListener('DOMContentLoaded', () => refreshLucide());
 </script>
 {% endblock %}

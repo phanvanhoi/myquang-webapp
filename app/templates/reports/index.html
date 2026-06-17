@@ -2,6 +2,10 @@
 {% block title %}Báo cáo{% endblock %}
 {% block page_title %}Báo cáo tổng hợp{% endblock %}
 
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <div x-data="reportApp()" class="space-y-4">
 

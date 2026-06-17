@@ -116,12 +116,14 @@ app.use((req, res, next) => {
   }
 
   if (
-    req.session.userId
+    req.method === 'GET'
+    && !wantsJson(req)
+    && req.session.userId
     && ['admin', 'cashier'].includes(req.session.role)
   ) {
     try {
-      const { buildDailySummary } = require('./lib/inventory');
-      res.locals.inventoryDaily = buildDailySummary();
+      const { getCachedDailySummary } = require('./lib/inventory-daily-cache');
+      res.locals.inventoryDaily = getCachedDailySummary();
     } catch (_) {
       res.locals.inventoryDaily = null;
     }

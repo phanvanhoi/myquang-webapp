@@ -28,6 +28,8 @@ router.post('/:id/adjust', (req, res) => {
 
   try {
     inventory.adminAdjustStock(id, delta, req.session.userId, note);
+    const { invalidateDailySummaryCache } = require('../lib/inventory-daily-cache');
+    invalidateDailySummaryCache();
     res.flash('success', 'Đã cập nhật tồn kho');
   } catch (err) {
     res.flash('error', err.message || 'Không thể cập nhật tồn kho');

@@ -50,7 +50,7 @@
           this.open = true;
           document.body.classList.add('overflow-hidden');
           this.$nextTick(function () {
-            if (window.lucide) lucide.createIcons();
+            refreshLucide();
           });
         },
         acknowledge() {
@@ -64,8 +64,14 @@
     }
   </script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script>
+    /** Chỉ quét icon trong root (mặc định cả trang nếu không truyền). */
+    function refreshLucide(root) {
+      if (!window.lucide) return;
+      lucide.createIcons(root ? { root: root } : undefined);
+    }
+  </script>
 
   <style>
     [x-cloak]{display:none!important}
@@ -205,7 +211,7 @@
 </div>
 
 <script>
-  lucide.createIcons();
+  refreshLucide();
 
   (function () {
     const meta = document.querySelector('meta[name="csrf-token"]');

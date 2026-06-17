@@ -522,7 +522,7 @@ function floorPlanMove() {
       try {
         const data = await fetchMoveJson(`/tables/available-for-move?exclude_table_id=${sourceTableId}`);
         this.moveTables = data.tables || [];
-        this.$nextTick(() => lucide.createIcons());
+        this.$nextTick(() => refreshLucide(this.$root));
       } catch (e) {
         alert(e.message || 'Không tải được danh sách bàn, thử lại');
         this.moveOpen = false;
@@ -550,7 +550,6 @@ function floorPlanMove() {
   };
 }
 
-document.addEventListener('alpine:initialized', () => lucide.createIcons());
-document.addEventListener('alpine:mutated',     () => lucide.createIcons());
+document.addEventListener('alpine:initialized', () => refreshLucide());
 </script>
 {% endblock %}
