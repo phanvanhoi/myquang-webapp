@@ -30,9 +30,9 @@
           Bấm nút bên dưới để nghe khi có món mới.
         </p>
       </div>
-      <p x-show="unservedTotal > 0"
+      <p x-show="alertableCount > 0"
          class="text-sm font-semibold text-red-600 bg-red-50 rounded-lg py-2 px-3">
-        Đang có <span x-text="unservedTotal"></span> món chờ — bật loa để nghe nhắc
+        Đang có <span x-text="alertableCount"></span> món cần nhắc loa — bật loa để nghe
       </p>
       <button type="button" @click="unlockAudio(true)"
               class="w-full h-12 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-base shadow-lg">
@@ -59,10 +59,10 @@
         <i data-lucide="bell" class="w-3.5 h-3.5"></i>
         Thử tiếng
       </button>
-      <span x-show="audioUnlocked && unservedTotal > 0"
+      <span x-show="audioUnlocked && alertableCount > 0"
             class="flex items-center gap-1 text-red-600 font-semibold animate-pulse">
         <i data-lucide="bell-ring" class="w-3.5 h-3.5"></i>
-        Đang nhắc món
+        Đang nhắc loa (<span x-text="alertableCount"></span>)
       </span>
       <span x-show="!refreshing" class="flex items-center gap-1">
         <span class="w-2 h-2 rounded-full bg-green-500"></span>
@@ -116,6 +116,21 @@
               <div class="font-bold" :class="ageClass(grp.oldestAge)" x-text="formatAge(grp.oldestAge)"></div>
             </div>
           </div>
+        </div>
+
+        {# Xác nhận đã thấy đơn — ngừng nhắc loa, món vẫn hiện đến khi tick lên #}
+        <div x-show="grp.unservedCount > 0 && !isGroupAcknowledged(grp)"
+             class="px-4 py-2 bg-amber-50/80 border-b border-amber-100">
+          <button type="button" @click="acknowledgeGroup(grp)"
+                  class="w-full h-9 rounded-lg bg-amber-500 hover:bg-amber-600 active:bg-amber-600
+                         text-white text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            Đã rõ
+          </button>
+        </div>
+        <div x-show="isGroupAcknowledged(grp) && grp.unservedCount > 0"
+             class="px-4 py-1.5 bg-gray-50 border-b border-gray-100 text-center">
+          <span class="text-[11px] text-gray-500">Đã rõ — không nhắc loa, vẫn chờ lên món</span>
         </div>
 
         {# Items list — mỗi món có nút tick tròn trắng, click → xanh, ở lại card #}
@@ -186,6 +201,7 @@ function kitchenApp(initial) {
     _unlockHandler: null,
     _visibilityHandler: null,
     _seenIds: new Set(),
+    _acknowledgedOrderIds: new Set(),
     _lastSig: '',
     _audioCtx: null,
     _alertAudio: null,
@@ -471,8 +487,39 @@ function kitchenApp(initial) {
       return this.items.reduce((n, it) => n + (it._served ? 0 : 1), 0);
     },
 
+    /** Món chưa lên và đơn chưa bấm "Đã rõ" — chỉ những món này mới kích hoạt loa. */
+    get alertableCount() {
+      return this.items.filter(it => !it._served && !this._acknowledgedOrderIds.has(it.order_id)).length;
+    },
+
+    isGroupAcknowledged(grp) {
+      const orderIds = [...new Set(grp.items.map(it => it.order_id))];
+      return orderIds.length > 0 && orderIds.every(id => this._acknowledgedOrderIds.has(id));
+    },
+
+    acknowledgeGroup(grp) {
+      const orderIds = [...new Set(grp.items.map(it => it.order_id))];
+      orderIds.forEach(id => this._acknowledgedOrderIds.add(id));
+      this._acknowledgedOrderIds = new Set(this._acknowledgedOrderIds);
+      this.syncAlertLoop();
+      this.$nextTick(() => refreshLucide(this.$root));
+    },
+
+    clearAckForNewItems(prevSeen, itemList) {
+      let changed = false;
+      for (const it of itemList) {
+        if (!it._served && !prevSeen.has(it.id) && this._acknowledgedOrderIds.has(it.order_id)) {
+          this._acknowledgedOrderIds.delete(it.order_id);
+          changed = true;
+        }
+      }
+      if (changed) {
+        this._acknowledgedOrderIds = new Set(this._acknowledgedOrderIds);
+      }
+    },
+
     syncAlertLoop(skipImmediate) {
-      if (this.unservedTotal <= 0) {
+      if (this.alertableCount <= 0) {
         this.stopAlertLoop();
         this._pendingBeeps = 0;
         return;
@@ -504,7 +551,7 @@ function kitchenApp(initial) {
     },
 
     async tickAlertLoop() {
-      if (this.unservedTotal <= 0) {
+      if (this.alertableCount <= 0) {
         this.stopAlertLoop();
         return;
       }
@@ -520,7 +567,7 @@ function kitchenApp(initial) {
       } finally {
         this._alertPlaying = false;
       }
-      if (this.unservedTotal <= 0) {
+      if (this.alertableCount <= 0) {
         this.stopAlertLoop();
         return;
       }
@@ -593,6 +640,7 @@ function kitchenApp(initial) {
           }
           this._lastSig = sig;
 
+          const prevSeen = new Set(this._seenIds);
           // Merge: server trả pending/preparing thôi. Giữ _served của local (cook đã tick rồi)
           // để card không "xóa xanh" giữa chừng.
           const fresh = this.annotate(data.items);
@@ -605,6 +653,7 @@ function kitchenApp(initial) {
           for (const local of this.items) {
             if (local._served && !freshIds.has(local.id)) merged.push(local);
           }
+          this.clearAckForNewItems(prevSeen, merged);
           this.items = merged;
           this._seenIds = new Set(this.items.map(it => it.id));
           this.syncAlertLoop();
