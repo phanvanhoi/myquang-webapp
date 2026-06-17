@@ -83,8 +83,8 @@ router.post('/:id/add-items', requireAuth, (req, res) => {
     addItemsToOrder(parseInt(id, 10), items, req.session.userId);
 
     const redirectUrl = order.order_type === 'takeaway'
-      ? '/takeaway/' + order.id
-      : '/tables';
+      ? `/takeaway/${order.id}`
+      : `/tables/${order.table_id}/order?order_id=${order.id}`;
     return res.json({ success: true, redirect: redirectUrl });
   } catch (err) {
     return res.status(400).json({ success: false, error: err.message });

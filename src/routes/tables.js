@@ -3,7 +3,6 @@ const router = express.Router();
 const { q } = require('../db');
 const { requireAuth, requireAdminOrCashier } = require('../middleware/auth');
 const {
-  countActiveVirtualChildren,
   createVirtualTable,
   afterOrderClosed,
   deactivateVirtualTable,
@@ -11,8 +10,9 @@ const {
   sortTableEntries,
   MAX_VIRTUAL_PER_PARENT,
 } = require('../lib/virtual-tables');
-const { ensurePublicToken, guestOrderUrl, countActiveDineInOrders } = require('../lib/table-guest');
+const { ensurePublicToken, guestOrderUrl } = require('../lib/table-guest');
 const { listAvailableMoveTargets } = require('../lib/table-move');
+const { buildTableEntries } = require('../lib/floor-plan');
 const inventory = require('../lib/inventory');
 
 router.use(requireAuth);
@@ -64,17 +64,7 @@ router.get('/', (req, res) => {
      ORDER BY o.created_at DESC`
   );
 
-  const tableEntries = tables.map(table => ({
-    table,
-    active_order: q.findActiveOrderForTable(table.id, { requireItems: true })
-      || (table.is_virtual
-        ? q.findActiveOrderForTable(table.id, { requireItems: false })
-        : null),
-    active_virtual_count: table.is_virtual
-      ? 0
-      : countActiveVirtualChildren(table.id),
-    active_order_count: countActiveDineInOrders(table.id),
-  }));
+  const tableEntries = buildTableEntries(tables);
 
   // 5. Build floors_data structure used by index.html template
   // Template iterates: {% for entry in fd.tables_by_room[None] %} and {% for entry in fd.tables_by_room[room.id] %}
