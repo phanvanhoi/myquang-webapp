@@ -42,3 +42,17 @@ test('getRemainingMs giảm dần', () => {
   assert.equal(getRemainingMs(data, now + 5 * 60_000), 10 * 60_000);
   assert.equal(getRemainingMs(data, now + 20 * 60_000), 0);
 });
+
+test('introHref và needsTableIntroParam khi session chờ bàn active', () => {
+  const { introHref, needsTableIntroParam } = require('../src/lib/table-order-sent');
+  const now = 2_000_000;
+  const data = { sentAt: now, etaMinutes: 12, tableName: 'Bàn 3' };
+
+  assert.equal(introHref(data, now + 60_000), '/gioi-thieu?from=table');
+  assert.equal(introHref(data, now + 12 * 60_000 + GRACE_MS), '/gioi-thieu');
+  assert.equal(introHref(null, now), '/gioi-thieu');
+
+  assert.equal(needsTableIntroParam(data, '', now + 60_000), true);
+  assert.equal(needsTableIntroParam(data, '?from=table', now + 60_000), false);
+  assert.equal(needsTableIntroParam(null, '', now), false);
+});

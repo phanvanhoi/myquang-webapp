@@ -74,6 +74,12 @@
     return isActive(data) && isFromTableUrl(searchOrQuery);
   }
 
+  function introHref() {
+    const data = load();
+    if (data && isActive(data)) return '/gioi-thieu?from=table';
+    return '/gioi-thieu';
+  }
+
   /** Vào luồng giao online — xóa trạng thái chờ bàn trong tab. */
   function clearForDeliveryFlow() {
     sessionStorage.removeItem(KEY);
@@ -92,6 +98,7 @@
     isCounting,
     isFromTableUrl,
     shouldShowAwaitingUI,
+    introHref,
     clearForDeliveryFlow,
     clear,
     MIN_ETA,

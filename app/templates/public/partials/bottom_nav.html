@@ -1,7 +1,7 @@
 {# Bottom nav — Giới thiệu | Đặt món | Gọi hotline #}
 <nav class="pub-bottom-nav" aria-label="Điều hướng chính">
   <div class="max-w-lg mx-auto flex h-full">
-    <a href="/gioi-thieu"
+    <a :href="(typeof MqTableSent !== 'undefined' && MqTableSent.introHref) ? MqTableSent.introHref() : '/gioi-thieu'"
        class="pub-nav-item {{ 'is-active' if activeNav == 'intro' else '' }}">
       <i data-lucide="home" class="w-5 h-5"></i>
       <span>Giới thiệu</span>

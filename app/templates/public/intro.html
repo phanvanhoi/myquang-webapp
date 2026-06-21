@@ -167,6 +167,12 @@ function introAwaiting() {
     timer: null,
 
     init() {
+      const M = window.MqTableSent;
+      const data = M && M.load();
+      if (data && M.isActive(data) && !M.isFromTableUrl(window.location.search)) {
+        window.location.replace('/gioi-thieu?from=table');
+        return;
+      }
       this.refresh();
       this.timer = setInterval(() => this.refresh(), 1000);
     },

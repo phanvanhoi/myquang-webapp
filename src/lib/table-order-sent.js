@@ -49,6 +49,17 @@ function shouldShowAwaitingUI(data, searchOrQuery, now = Date.now()) {
   return isActive(data, now) && isFromTableUrl(searchOrQuery);
 }
 
+/** Session chờ bàn còn hiệu lực nhưng URL thiếu ?from=table — cần redirect/bổ sung param. */
+function needsTableIntroParam(data, searchOrQuery, now = Date.now()) {
+  if (!data || data.sentAt == null) return false;
+  return isActive(data, now) && !isFromTableUrl(searchOrQuery);
+}
+
+function introHref(data, now = Date.now()) {
+  if (data && isActive(data, now)) return '/gioi-thieu?from=table';
+  return '/gioi-thieu';
+}
+
 module.exports = {
   KEY,
   MIN_ETA,
@@ -62,4 +73,6 @@ module.exports = {
   isActive,
   getRemainingMs,
   shouldShowAwaitingUI,
+  needsTableIntroParam,
+  introHref,
 };
