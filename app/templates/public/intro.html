@@ -1,8 +1,12 @@
 {% extends "public/base.html" %}
 {% block title %}Giới thiệu — {{ intro.title }}{% endblock %}
 
+{% block head %}
+<script src="/js/pub-table-sent.js"></script>
+{% endblock %}
+
 {% block content %}
-<div class="pub-page pub-grain relative overflow-hidden">
+<div class="pub-page pub-grain relative overflow-hidden" x-data="introAwaiting()" x-init="init()">
   {# Hero #}
   <header class="relative min-h-[42vh] flex flex-col justify-end overflow-hidden">
     <img src="{{ intro.heroImage }}" alt=""
@@ -29,8 +33,70 @@
   </header>
 
   <div class="relative z-10 max-w-lg mx-auto px-4 -mt-2 space-y-6 pb-4">
-    {# CTA chính #}
-    <a href="/order"
+
+    {# Trạng thái chờ món sau khi gửi từ QR bàn #}
+    <section x-show="awaiting" x-cloak
+             class="pub-reveal pub-awaiting-card rounded-2xl overflow-hidden -mt-1"
+             style="animation-delay:.05s">
+      <div class="pub-awaiting-card__head px-4 py-3 flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0 pub-awaiting-pulse">
+          <i data-lucide="chef-hat" class="w-6 h-6 text-white"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-[10px] font-bold uppercase tracking-widest text-orange-100/90">Đã gửi xuống bếp</p>
+          <h2 class="font-bold text-white text-base leading-snug mt-0.5">
+            Bếp đang chế biến cho <span x-text="tableName"></span>
+          </h2>
+        </div>
+      </div>
+
+      <div class="pub-awaiting-card__body px-4 py-4 bg-white/95">
+        <template x-if="!done">
+          <div class="text-center">
+            <p class="pub-section-label mb-2">Dự kiến món lên trong</p>
+            <div class="relative inline-flex items-center justify-center w-36 h-36">
+              <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
+                <circle cx="50" cy="50" r="44" fill="none" stroke="#fde68a" stroke-width="6"/>
+                <circle cx="50" cy="50" r="44" fill="none" stroke="url(#pubAwaitGrad)" stroke-width="6"
+                        stroke-linecap="round"
+                        :stroke-dasharray="276.46"
+                        :stroke-dashoffset="276.46 * (1 - progress / 100)"/>
+                <defs>
+                  <linearGradient id="pubAwaitGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#f59e0b"/>
+                    <stop offset="100%" stop-color="#c2410c"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="relative">
+                <div class="font-display text-4xl font-bold text-[#8a6502] tabular-nums tracking-tight"
+                     x-text="countdownLabel()"></div>
+                <p class="text-[10px] text-[#5c4a1a]/60 font-semibold mt-0.5">phút : giây</p>
+              </div>
+            </div>
+            <p class="text-xs text-[#5c4a1a]/75 mt-3 leading-relaxed max-w-xs mx-auto">
+              Thời gian ước tính <span class="font-bold text-[#8a6502]" x-text="etaMinutes"></span> phút.
+              Trong lúc chờ, bạn có thể đọc thêm về quán bên dưới nhé.
+            </p>
+          </div>
+        </template>
+        <template x-if="done">
+          <div class="text-center py-2">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 mb-3">
+              <i data-lucide="bell-ring" class="w-7 h-7"></i>
+            </div>
+            <p class="font-bold text-[#8a6502] text-lg">Có thể món đã sẵn sàng!</p>
+            <p class="text-sm text-[#5c4a1a]/80 mt-2 leading-relaxed">
+              Nhân viên sẽ mang món đến <span class="font-semibold" x-text="tableName"></span>.
+              Cần hỗ trợ, gọi hotline bên dưới.
+            </p>
+          </div>
+        </template>
+      </div>
+    </section>
+
+    {# CTA đặt online — ẩn khi đang chờ món từ QR bàn #}
+    <a x-show="!hideOrderNav" x-cloak href="/order"
        class="pub-reveal pub-card pub-card--cta pub-shimmer block rounded-2xl px-5 py-4 text-center"
        style="animation-delay:.28s">
       <div class="flex items-center justify-center gap-2 font-bold text-lg">
@@ -85,4 +151,60 @@
 
   {% include "public/partials/bottom_nav.html" %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function introAwaiting() {
+  return {
+    awaiting: false,
+    hideOrderNav: false,
+    tableName: '',
+    etaMinutes: 12,
+    remainingMs: 0,
+    done: false,
+    progress: 0,
+    timer: null,
+
+    init() {
+      this.refresh();
+      if (this.awaiting) {
+        this.timer = setInterval(() => this.refresh(), 1000);
+      }
+    },
+
+    refresh() {
+      const M = window.MqTableSent;
+      const data = M && M.load();
+      if (!data || !M.isActive(data)) {
+        this.awaiting = false;
+        this.hideOrderNav = false;
+        if (this.timer) {
+          clearInterval(this.timer);
+          this.timer = null;
+        }
+        return;
+      }
+      this.awaiting = true;
+      this.hideOrderNav = true;
+      this.tableName = data.tableName || 'bàn bạn';
+      this.etaMinutes = data.etaMinutes;
+      this.remainingMs = M.getRemainingMs(data);
+      this.done = this.remainingMs <= 0;
+      const total = data.etaMinutes * 60 * 1000;
+      this.progress = total > 0
+        ? Math.min(100, Math.round(((total - this.remainingMs) / total) * 100))
+        : 100;
+      this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+    },
+
+    countdownLabel() {
+      const ms = this.remainingMs;
+      const m = Math.floor(ms / 60000);
+      const s = Math.floor((ms % 60000) / 1000);
+      return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    },
+  };
+}
+</script>
 {% endblock %}
