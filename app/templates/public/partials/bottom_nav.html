@@ -12,9 +12,8 @@
       <i data-lucide="shopping-bag" class="w-5 h-5"></i>
       <span>Đặt món</span>
     </a>
-    <a :href="tableOrderNavHref"
-       x-show="typeof tableOrderNavHref === 'string' && tableOrderNavHref"
-       x-cloak
+    <a :href="tableOrderNavHref || '#'"
+       x-show="tableOrderNavHref"
        class="pub-nav-item {{ 'is-active' if activeNav == 'table' else '' }}">
       <i data-lucide="qr-code" class="w-5 h-5"></i>
       <span>Gọi món</span>

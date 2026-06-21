@@ -65,6 +65,7 @@
 <script>
 function tableGuestOrder() {
   return {
+    ...menuStateDefaults({ orderMode: 'table', canSubmit: true }),
     token: '',
     tableName: '',
     summaryOpen: true,

@@ -42,6 +42,7 @@
 <script>
 function publicOrder() {
   return {
+    ...menuStateDefaults({ orderMode: 'delivery' }),
     customer: { name: '', phone: '', address: '', note: '' },
     hideOrderNav: false,
     introNavHref: '/gioi-thieu',

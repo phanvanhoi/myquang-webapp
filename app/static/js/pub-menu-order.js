@@ -3,6 +3,31 @@
  * Dùng applyPubMenuBase() trong init() — không spread (Alpine không reactive đúng).
  */
 (function (global) {
+  /** Khai báo sẵn trong x-data — Alpine reactive đúng cho cart/items. */
+  function menuStateDefaults(opts) {
+    opts = opts || {};
+    return {
+      items: [],
+      heroImages: opts.heroImages || [],
+      search: '',
+      activeCat: 0,
+      tabIndicatorStyle: 'left:0;width:0;opacity:0',
+      cart: [],
+      cartOpen: false,
+      submitting: false,
+      errorMsg: '',
+      cartBumpId: null,
+      cartBarBump: false,
+      canSubmit: opts.canSubmit !== false,
+      orderMode: opts.orderMode || 'delivery',
+      cartBarLabel: opts.cartBarLabel || 'Xem giỏ hàng',
+      cartDrawerTitle: opts.cartDrawerTitle || 'Giỏ hàng',
+      submitLabel: opts.submitLabel || 'Đặt hàng',
+      submitLabelLoading: opts.submitLabelLoading || 'Đang gửi...',
+      _revealObserver: null,
+    };
+  }
+
   function createPubMenuBase(menuItems, opts) {
     opts = opts || {};
     return {
@@ -115,19 +140,22 @@
     };
   }
 
-  /** Gắn menu base lên component Alpine trong init(). */
+  /** Gắn menu base lên component Alpine trong init() — giữ mảng đã khai báo sẵn. */
   function applyPubMenuBase(component, menuItems, opts) {
     const base = createPubMenuBase(menuItems, opts);
     for (const key of Object.keys(base)) {
       const val = base[key];
       if (typeof val === 'function') {
         component[key] = val.bind(component);
+      } else if (Array.isArray(val) && Array.isArray(component[key])) {
+        component[key].splice(0, component[key].length, ...val);
       } else {
         component[key] = val;
       }
     }
   }
 
+  global.menuStateDefaults = menuStateDefaults;
   global.createPubMenuBase = createPubMenuBase;
   global.applyPubMenuBase = applyPubMenuBase;
 })(typeof window !== 'undefined' ? window : global);
