@@ -127,7 +127,7 @@ router.get('/', (req, res) => {
     floors_data,
     takeawayOrders,
     maxVirtualPerParent: MAX_VIRTUAL_PER_PARENT,
-    showTableQr: false, // tạm ẩn nút QR gọi món trên sơ đồ bàn
+    showTableQr: true,
   });
 });
 
