@@ -1,5 +1,5 @@
-const { q } = require('../db');
-const { resolveMenuImage, isStaleStockUrl } = require('./menu-stock-images');
+const { q } = require('./db');
+const { resolveMenuImage, isStaleStockUrl } = require('./lib/menu-stock-images');
 
 /** Gán ảnh stock cho món thiếu ảnh hoặc ảnh Wikimedia cũ lỗi (idempotent). */
 function ensureMenuStockImages() {
