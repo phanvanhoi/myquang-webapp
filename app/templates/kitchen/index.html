@@ -101,19 +101,62 @@
       <div class="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden flex flex-col">
 
         {# Table header #}
-        <div class="bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-3 text-white">
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="font-bold text-base" x-text="grp.tableName"></div>
-              <div class="text-xs text-amber-100">
+        <div class="px-4 py-3 text-white"
+             :class="grp.isOnlineDelivery
+               ? 'bg-gradient-to-r from-orange-500 via-red-500 to-red-600 ring-2 ring-orange-300 ring-inset'
+               : 'bg-gradient-to-r from-amber-500 to-amber-600'">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0 flex-1">
+              <div x-show="grp.isOnlineDelivery"
+                   class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white text-orange-700 text-[10px] font-extrabold uppercase tracking-wide mb-1.5">
+                <i data-lucide="bike" class="w-3 h-3"></i>
+                Giao online
+              </div>
+              <div class="font-bold text-base leading-tight" x-text="grp.tableName"></div>
+              <div class="text-xs opacity-90 mt-0.5">
                 <span x-text="grp.orderCode"></span>
-                <span x-show="grp.guestCount"> · </span>
-                <span x-show="grp.guestCount" x-text="grp.guestCount + ' khách'"></span>
+                <span x-show="!grp.isOnlineDelivery && grp.guestCount"> · </span>
+                <span x-show="!grp.isOnlineDelivery && grp.guestCount" x-text="grp.guestCount + ' khách'"></span>
               </div>
             </div>
-            <div class="text-right">
-              <div class="text-xs text-amber-100">Đã chờ</div>
+            <div class="text-right shrink-0">
+              <div class="text-xs opacity-90">Đã chờ</div>
               <div class="font-bold" :class="ageClass(grp.oldestAge)" x-text="formatAge(grp.oldestAge)"></div>
+            </div>
+          </div>
+        </div>
+
+        {# Thông tin khách — đơn giao online #}
+        <div x-show="grp.isOnlineDelivery"
+             class="px-4 py-3 bg-orange-50 border-b-2 border-orange-200 text-sm space-y-2">
+          <div class="flex items-start gap-2">
+            <i data-lucide="user" class="w-4 h-4 text-orange-600 shrink-0 mt-0.5"></i>
+            <div class="min-w-0">
+              <div class="text-[10px] font-bold uppercase tracking-wide text-orange-700/70">Khách</div>
+              <div class="font-bold text-gray-900" x-text="grp.customerName || 'Khách'"></div>
+            </div>
+          </div>
+          <div x-show="grp.customerPhone" class="flex items-start gap-2">
+            <i data-lucide="phone" class="w-4 h-4 text-orange-600 shrink-0 mt-0.5"></i>
+            <div>
+              <div class="text-[10px] font-bold uppercase tracking-wide text-orange-700/70">SĐT</div>
+              <a :href="'tel:' + grp.customerPhone"
+                 class="font-bold text-orange-800 underline underline-offset-2"
+                 x-text="grp.customerPhone"></a>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            <i data-lucide="map-pin" class="w-4 h-4 text-orange-600 shrink-0 mt-0.5"></i>
+            <div class="min-w-0">
+              <div class="text-[10px] font-bold uppercase tracking-wide text-orange-700/70">Địa chỉ giao</div>
+              <div class="font-semibold text-gray-800 leading-snug" x-text="grp.customerAddress"></div>
+            </div>
+          </div>
+          <div x-show="grp.customerNote" class="flex items-start gap-2 pt-1 border-t border-orange-200/80">
+            <i data-lucide="message-square" class="w-4 h-4 text-orange-600 shrink-0 mt-0.5"></i>
+            <div class="min-w-0">
+              <div class="text-[10px] font-bold uppercase tracking-wide text-orange-700/70">Ghi chú</div>
+              <div class="text-orange-900 italic" x-text="grp.customerNote"></div>
             </div>
           </div>
         </div>
@@ -476,8 +519,10 @@ function kitchenApp(initial) {
     },
 
     signature(rawItems) {
-      // table_id để KDS cập nhật số bàn sau khi staff đổi bàn (id/qty/note không đổi).
-      return rawItems.map(it => `${it.id}:${it.quantity}:${it.note || ''}:${it.table_id || 0}`).join('|');
+      // table_id + order_id + customer — KDS cập nhật sau đổi bàn / đơn giao mới.
+      return rawItems.map(it =>
+        `${it.id}:${it.quantity}:${it.note || ''}:${it.kitchen_group_key || it.table_id || 0}:${it.order_id}`
+      ).join('|');
     },
 
     isTableBusy(tableId) { return this.busyTables.has(tableId); },
@@ -580,7 +625,7 @@ function kitchenApp(initial) {
     get itemsByTable() {
       const groups = new Map();
       for (const it of this.items) {
-        const key = it.table_id || ('to-' + it.order_id);
+        const key = it.kitchen_group_key || it.table_id || ('to-' + it.order_id);
         let g = groups.get(key);
         if (!g) {
           g = {
@@ -588,6 +633,11 @@ function kitchenApp(initial) {
             tableName: it.kitchen_table_name || it.table_name || 'Mang về',
             orderCode: it.order_code,
             guestCount: it.guest_count,
+            isOnlineDelivery: !!it.is_online_delivery,
+            customerName: it.customer_name || '',
+            customerPhone: it.customer_phone || '',
+            customerAddress: it.customer_address || '',
+            customerNote: it.customer_note || '',
             items: [],
             oldestAge: 0,
             unservedCount: 0,
@@ -600,10 +650,13 @@ function kitchenApp(initial) {
           if (it._age > g.oldestAge) g.oldestAge = it._age;
         }
       }
-      // Bàn đã tick hết món → biến mất khỏi KDS.
+      // Bàn đã tick hết món → biến mất khỏi KDS. Đơn giao online lên trước.
       return Array.from(groups.values())
         .filter(g => g.unservedCount > 0)
-        .sort((a, b) => b.oldestAge - a.oldestAge);
+        .sort((a, b) => {
+          if (a.isOnlineDelivery !== b.isOnlineDelivery) return a.isOnlineDelivery ? -1 : 1;
+          return b.oldestAge - a.oldestAge;
+        });
     },
 
     formatAge(min) {

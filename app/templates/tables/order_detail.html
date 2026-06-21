@@ -123,6 +123,12 @@
     }));
 </script>
 
+{% if order.customer_address %}
+<div class="px-3 lg:px-4 pt-3 pb-2">
+  {% include "tables/_delivery_customer_banner.html" %}
+</div>
+{% endif %}
+
 {# ══════════════════════════════════════════════════════════
    DESKTOP — Side-by-side (lg+)
 ══════════════════════════════════════════════════════════ #}

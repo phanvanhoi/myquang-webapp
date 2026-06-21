@@ -1,0 +1,48 @@
+{# Banner thông tin khách — đơn giao online (/order) #}
+{% if order.customer_address %}
+<div class="rounded-xl border-2 border-orange-300 bg-gradient-to-br from-orange-500 to-red-600 text-white shadow-lg overflow-hidden">
+  <div class="px-4 py-2.5 bg-black/15 flex flex-wrap items-center gap-2">
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white text-orange-700 text-[11px] font-extrabold uppercase tracking-wide">
+      <i data-lucide="bike" class="w-3.5 h-3.5"></i>
+      Giao online · Đặt mang về
+    </span>
+    <span class="text-xs text-orange-100 font-mono">{{ order.order_code }}</span>
+  </div>
+  <div class="px-4 py-3 space-y-2 text-sm">
+    <div class="flex items-start gap-2">
+      <i data-lucide="user" class="w-4 h-4 shrink-0 mt-0.5 opacity-90"></i>
+      <div>
+        <div class="text-[10px] uppercase tracking-wider text-orange-100/90 font-semibold">Khách hàng</div>
+        <div class="font-bold text-base">{{ order.customer_name or 'Khách' }}</div>
+      </div>
+    </div>
+    {% if order.customer_phone %}
+    <div class="flex items-start gap-2">
+      <i data-lucide="phone" class="w-4 h-4 shrink-0 mt-0.5 opacity-90"></i>
+      <div>
+        <div class="text-[10px] uppercase tracking-wider text-orange-100/90 font-semibold">Điện thoại</div>
+        <a href="tel:{{ order.customer_phone }}" class="font-bold text-base underline underline-offset-2 hover:text-orange-100">
+          {{ order.customer_phone }}
+        </a>
+      </div>
+    </div>
+    {% endif %}
+    <div class="flex items-start gap-2">
+      <i data-lucide="map-pin" class="w-4 h-4 shrink-0 mt-0.5 opacity-90"></i>
+      <div>
+        <div class="text-[10px] uppercase tracking-wider text-orange-100/90 font-semibold">Địa chỉ giao</div>
+        <div class="font-semibold leading-snug">{{ order.customer_address }}</div>
+      </div>
+    </div>
+    {% if order.customer_note %}
+    <div class="flex items-start gap-2 pt-1 border-t border-white/20">
+      <i data-lucide="message-square" class="w-4 h-4 shrink-0 mt-0.5 opacity-90"></i>
+      <div>
+        <div class="text-[10px] uppercase tracking-wider text-orange-100/90 font-semibold">Ghi chú</div>
+        <div class="italic text-orange-50">{{ order.customer_note }}</div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

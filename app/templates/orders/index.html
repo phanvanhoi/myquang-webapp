@@ -70,10 +70,17 @@
           <td class="px-5 py-3 font-mono text-xs text-gray-500">{{ order.order_code }}</td>
           <td class="px-5 py-3 font-semibold text-gray-800">
             {% if order.customer_address %}
-            <span class="flex items-center gap-1.5">
-              <i data-lucide="bike" class="w-3.5 h-3.5 text-amber-600"></i>
-              {{ order.customer_name or 'Khách' }}
-              <span class="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Giao hàng</span>
+            <span class="flex flex-col gap-0.5">
+              <span class="flex items-center gap-1.5">
+                <i data-lucide="bike" class="w-3.5 h-3.5 text-orange-600"></i>
+                {{ order.customer_name or 'Khách' }}
+                <span class="text-xs px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold uppercase tracking-wide">Giao online</span>
+              </span>
+              {% if order.customer_phone %}
+              <span class="text-xs font-normal text-gray-500">{{ order.customer_phone }} · {{ order.customer_address | truncate(40) }}</span>
+              {% else %}
+              <span class="text-xs font-normal text-gray-500">{{ order.customer_address | truncate(50) }}</span>
+              {% endif %}
             </span>
             {% else %}
             <span class="flex items-center gap-1.5">
@@ -126,10 +133,16 @@
         {% endif %}
         <div class="flex-1 min-w-0">
           {% if order.customer_address %}
-          <div class="font-semibold text-gray-800 flex items-center gap-1.5">
-            <i data-lucide="bike" class="w-4 h-4 text-amber-600"></i>
-            {{ order.customer_name or 'Khách' }}
-            <span class="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Giao</span>
+          <div class="font-semibold text-gray-800">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <i data-lucide="bike" class="w-4 h-4 text-orange-600"></i>
+              {{ order.customer_name or 'Khách' }}
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold uppercase">Giao online</span>
+            </div>
+            {% if order.customer_phone %}
+            <a href="tel:{{ order.customer_phone }}" class="text-xs text-orange-700 font-semibold mt-0.5 block">{{ order.customer_phone }}</a>
+            {% endif %}
+            <p class="text-xs text-gray-500 mt-0.5 leading-snug">{{ order.customer_address }}</p>
           </div>
           {% else %}
           <div class="font-semibold text-gray-800 flex items-center gap-1.5">

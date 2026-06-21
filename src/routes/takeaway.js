@@ -68,9 +68,12 @@ router.get('/:orderId', (req, res) => {
 
   // Pseudo-table cho template (header dùng table.name)
   const sentinel = getSentinel();
+  const isOnline = !!(order.customer_address && String(order.customer_address).trim());
   const table = {
     id: sentinel.id,
-    name: 'Mang về',
+    name: isOnline
+      ? `🛵 Giao · ${order.customer_name || 'Khách'}`
+      : 'Mang về',
     code: order.order_code,
     floor: null,
     room: null,

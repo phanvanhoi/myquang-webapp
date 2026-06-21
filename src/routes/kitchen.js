@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { q } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { kitchenTableLabel } = require('../lib/virtual-tables');
+const { enrichKitchenItem } = require('../lib/online-delivery');
 
 router.use(requireAuth);
 
@@ -13,8 +13,11 @@ router.use(requireAuth);
 const SQL_KITCHEN_ITEMS = `
   SELECT oi.id, oi.quantity, oi.note, oi.created_at,
          mi.name AS item_name,
-         o.id AS order_id, o.order_code, o.guest_count, o.created_at AS order_created_at,
+         o.id AS order_id, o.order_code, o.order_type, o.guest_count,
+         o.customer_name, o.customer_phone, o.customer_address, o.customer_note,
+         o.created_at AS order_created_at,
          t.id AS table_id, t.name AS table_name, t.code AS table_code,
+         t.is_takeaway AS is_takeaway,
          t.is_virtual AS is_virtual,
          pt.name AS parent_name, pt.code AS parent_code,
          f.name AS floor_name, r.name AS room_name
@@ -30,21 +33,19 @@ const SQL_KITCHEN_ITEMS = `
   ORDER BY oi.created_at ASC
 `;
 
+function mapKitchenItems(rows) {
+  return rows.map(enrichKitchenItem);
+}
+
 // GET /kitchen — màn hình bếp
 router.get('/', (req, res) => {
-  const items = q.all(SQL_KITCHEN_ITEMS).map(it => ({
-    ...it,
-    kitchen_table_name: kitchenTableLabel(it),
-  }));
+  const items = mapKitchenItems(q.all(SQL_KITCHEN_ITEMS));
   res.render('kitchen/index.html', { items });
 });
 
 // GET /kitchen/data — JSON cho auto-refresh
 router.get('/data', (req, res) => {
-  const items = q.all(SQL_KITCHEN_ITEMS).map(it => ({
-    ...it,
-    kitchen_table_name: kitchenTableLabel(it),
-  }));
+  const items = mapKitchenItems(q.all(SQL_KITCHEN_ITEMS));
   res.json({ success: true, items, ts: Date.now() });
 });
 
