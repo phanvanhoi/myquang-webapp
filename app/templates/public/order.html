@@ -1,19 +1,18 @@
 {% extends "public/base.html" %}
 {% block title %}Đặt món — {{ settings.restaurant_name or 'MyQuang' }}{% endblock %}
 
-{% block head %}
-<script src="/js/pub-menu-order.js"></script>
-{% endblock %}
-
 {% block content %}
 <script>
-  const _menuItems = {{ items | tojson | safe }};
-  const _heroImages = {{ heroImages | tojson | safe }};
+  window.__mqMenu = {
+    menuItems: {{ items | tojson | safe }},
+    heroImages: {{ heroImages | tojson | safe }},
+    orderMode: 'delivery',
+  };
 </script>
 
-<div x-data="publicOrder(_menuItems, _heroImages)"
+<div x-data="publicOrder()"
      x-init="init()"
-     :class="totalItemCount > 0 && !cartOpen ? 'pub-page--cart-active' : ''"
+     :class="totalItemCount() > 0 && !cartOpen ? 'pub-page--cart-active' : ''"
      class="pub-page pub-grain relative">
 
   {% set heroBadgeIcon = 'bike' %}
@@ -34,18 +33,19 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/js/pub-menu-order.js"></script>
 <script>
-function publicOrder(menuItems, heroImages) {
-  const base = createPubMenuBase(menuItems, {
-    heroImages,
-    orderMode: 'delivery',
-  });
-
+function publicOrder() {
   return {
-    ...base,
     customer: { name: '', phone: '', address: '', note: '' },
+    hideOrderNav: false,
 
     init() {
+      const cfg = window.__mqMenu || {};
+      applyPubMenuBase(this, cfg.menuItems, {
+        heroImages: cfg.heroImages,
+        orderMode: 'delivery',
+      });
       try {
         const saved = JSON.parse(localStorage.getItem('myquang_customer') || '{}');
         if (saved && typeof saved === 'object') {

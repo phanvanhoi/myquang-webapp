@@ -7,8 +7,7 @@
       <span>Giới thiệu</span>
     </a>
     <a href="/order"
-       x-show="typeof hideOrderNav === 'undefined' || !hideOrderNav"
-       x-cloak
+       :class="hideOrderNav ? 'hidden' : ''"
        class="pub-nav-item {{ 'is-active' if activeNav == 'order' else '' }}">
       <i data-lucide="shopping-bag" class="w-5 h-5"></i>
       <span>Đặt món</span>

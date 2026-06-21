@@ -2,24 +2,33 @@
 {% block title %}Gọi món — {{ table.name }} — {{ settings.restaurant_name or 'MyQuang' }}{% endblock %}
 
 {% block head %}
-<script src="/js/pub-menu-order.js"></script>
 <script src="/js/pub-table-sent.js"></script>
 {% endblock %}
 
 {% block content %}
 <script>
-  const _menuItems = {{ items | tojson | safe }};
-  const _heroImages = {{ heroImages | tojson | safe }};
-  const _tableToken = {{ token | tojson | safe }};
-  const _initialSummary = {{ initialSummary | tojson | safe }};
-  const _initialCanSubmit = {{ canSubmit | tojson | safe }};
-  const _initialBlockReason = {{ blockReason | tojson | safe }};
-  const _tableName = {{ table.name | tojson | safe }};
+  window.__mqMenu = {
+    menuItems: {{ items | tojson | safe }},
+    heroImages: {{ heroImages | tojson | safe }},
+    orderMode: 'table',
+    canSubmit: {{ canSubmit | tojson | safe }},
+    cartBarLabel: 'Xem giỏ gửi bếp',
+    cartDrawerTitle: 'Giỏ gửi bếp',
+    submitLabel: 'Gửi xuống bếp',
+    submitLabelLoading: 'Đang gửi xuống bếp...',
+  };
+  window.__mqTable = {
+    token: {{ token | tojson | safe }},
+    tableName: {{ table.name | tojson | safe }},
+    initialSummary: {{ initialSummary | tojson | safe }},
+    initialCanSubmit: {{ canSubmit | tojson | safe }},
+    blockReason: {{ blockReason | tojson | safe }},
+  };
 </script>
 
-<div x-data="tableGuestOrder(_tableToken, _menuItems, _heroImages, _initialSummary, _initialCanSubmit, _initialBlockReason, _tableName)"
+<div x-data="tableGuestOrder()"
      x-init="init()"
-     :class="totalItemCount > 0 && !cartOpen ? 'pub-page--table-cart' : ''"
+     :class="totalItemCount() > 0 && !cartOpen ? 'pub-page--table-cart' : ''"
      class="pub-page pub-grain relative min-h-screen">
 
   {% set heroBadgeIcon = 'qr-code' %}
@@ -48,31 +57,37 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/js/pub-menu-order.js"></script>
 <script>
-function tableGuestOrder(token, menuItems, heroImages, initialSummary, initialCanSubmit, initialBlockReason, tableName) {
-  const base = createPubMenuBase(menuItems, {
-    heroImages,
-    canSubmit: initialCanSubmit !== false,
-    orderMode: 'table',
-    cartBarLabel: 'Xem giỏ gửi bếp',
-    cartDrawerTitle: 'Giỏ gửi bếp',
-    submitLabel: 'Gửi xuống bếp',
-    submitLabelLoading: 'Đang gửi xuống bếp...',
-  });
-
+function tableGuestOrder() {
   return {
-    ...base,
-    token,
-    tableName: tableName || '',
+    token: '',
+    tableName: '',
     summaryOpen: true,
-    orderSummary: initialSummary,
-    blockReason: initialBlockReason || null,
+    orderSummary: null,
+    blockReason: null,
     showSentOverlay: false,
     redirectSec: 3,
     pollTimer: null,
     redirectTimer: null,
+    hideOrderNav: false,
 
     init() {
+      const cfg = window.__mqMenu || {};
+      const tbl = window.__mqTable || {};
+      applyPubMenuBase(this, cfg.menuItems, {
+        heroImages: cfg.heroImages,
+        orderMode: 'table',
+        canSubmit: cfg.canSubmit !== false,
+        cartBarLabel: cfg.cartBarLabel,
+        cartDrawerTitle: cfg.cartDrawerTitle,
+        submitLabel: cfg.submitLabel,
+        submitLabelLoading: cfg.submitLabelLoading,
+      });
+      this.token = tbl.token || '';
+      this.tableName = tbl.tableName || '';
+      this.orderSummary = tbl.initialSummary;
+      this.blockReason = tbl.blockReason || null;
       this.initPubMenu();
       this.pollTimer = setInterval(() => this.refreshStatus(), 15000);
     },

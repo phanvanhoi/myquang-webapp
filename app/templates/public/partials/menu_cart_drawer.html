@@ -23,7 +23,7 @@
     <div class="px-5 py-4 border-b border-amber-100 flex items-center justify-between sticky top-0 bg-[#fffbeb] rounded-t-3xl">
       <div>
         <h2 class="font-display text-2xl font-bold text-[#8a6502]" x-text="cartDrawerTitle"></h2>
-        <p class="text-xs text-[#5c4a1a]/60" x-text="totalItemCount + ' món · ' + fmt(totalAmount)"></p>
+        <p class="text-xs text-[#5c4a1a]/60" x-text="totalItemCount() + ' món · ' + fmt(totalAmount())"></p>
       </div>
       <button type="button" @click="cartOpen = false" aria-label="Đóng"
               class="w-10 h-10 rounded-full bg-amber-100/80 flex items-center justify-center text-[#8a6502]">
@@ -110,7 +110,7 @@
          class="border-t border-amber-100 p-4 space-y-2 sticky bottom-0 bg-[#fffbeb] pb-[max(env(safe-area-inset-bottom),16px)]">
       <div class="flex items-center justify-between">
         <span class="text-sm text-[#5c4a1a]/60" x-text="orderMode === 'table' ? 'Tổng lần gửi này' : 'Tổng cộng'"></span>
-        <span class="text-2xl font-extrabold text-[#c2410c]" x-text="fmt(totalAmount)"></span>
+        <span class="text-2xl font-extrabold text-[#c2410c]" x-text="fmt(totalAmount())"></span>
       </div>
       <button type="button" @click="submit()" :disabled="submitting"
               :class="submitting ? 'bg-gray-200 text-gray-400' : (orderMode === 'table' ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg' : 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg active:scale-[0.98]')"

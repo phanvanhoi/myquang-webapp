@@ -1,10 +1,10 @@
 <main class="max-w-3xl mx-auto px-4 py-4">
   <p class="text-xs text-[#8a6502]/70 mb-3 font-medium">
-    <span x-text="filteredItems.length"></span> món · Ấm Quê
+    <span x-text="filteredItems().length"></span> món · Ấm Quê
   </p>
 
   <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-    <template x-for="item in filteredItems" :key="item.id">
+    <template x-for="item in filteredItems()" :key="item.id">
       <div @click="canSubmit !== false && addItem(item)"
            class="pub-menu-card pub-reveal-scroll bg-white/90 rounded-2xl border border-amber-100/80 overflow-hidden flex flex-col shadow-sm"
            :class="canSubmit !== false ? 'cursor-pointer' : 'opacity-90'"
@@ -47,7 +47,7 @@
     </template>
   </div>
 
-  <div x-show="filteredItems.length === 0" x-cloak class="py-20 text-center">
+  <div x-show="filteredItems().length === 0" x-cloak class="py-20 text-center">
     <div class="inline-flex w-16 h-16 rounded-full bg-amber-100 items-center justify-center mb-4 animate-bounce">
       <i data-lucide="search-x" class="w-8 h-8 text-amber-400/70"></i>
     </div>

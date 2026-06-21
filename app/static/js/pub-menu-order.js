@@ -1,5 +1,6 @@
 /**
  * Logic menu/cart dùng chung — /order và /t/:token (QR bàn).
+ * Dùng applyPubMenuBase() trong init() — không spread (Alpine không reactive đúng).
  */
 (function (global) {
   function createPubMenuBase(menuItems, opts) {
@@ -57,7 +58,7 @@
         this.tabIndicatorStyle = 'left:' + btn.offsetLeft + 'px;width:' + btn.offsetWidth + 'px;opacity:1';
       },
 
-      get filteredItems() {
+      filteredItems() {
         const s = this.search.toLowerCase().trim();
         return this.items.filter((it) => {
           const catOk = this.activeCat === 0 || it.category_id === this.activeCat;
@@ -66,11 +67,11 @@
         });
       },
 
-      get totalAmount() {
+      totalAmount() {
         return this.cart.reduce((sum, e) => sum + e.price * e.qty, 0);
       },
 
-      get totalItemCount() {
+      totalItemCount() {
         return this.cart.reduce((sum, e) => sum + e.qty, 0);
       },
 
@@ -114,5 +115,19 @@
     };
   }
 
+  /** Gắn menu base lên component Alpine trong init(). */
+  function applyPubMenuBase(component, menuItems, opts) {
+    const base = createPubMenuBase(menuItems, opts);
+    for (const key of Object.keys(base)) {
+      const val = base[key];
+      if (typeof val === 'function') {
+        component[key] = val.bind(component);
+      } else {
+        component[key] = val;
+      }
+    }
+  }
+
   global.createPubMenuBase = createPubMenuBase;
+  global.applyPubMenuBase = applyPubMenuBase;
 })(typeof window !== 'undefined' ? window : global);
