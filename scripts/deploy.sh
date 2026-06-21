@@ -13,6 +13,23 @@ if [[ ! -f .env ]] || ! grep -q '^SECRET_KEY=.\+' .env 2>/dev/null; then
   exit 1
 fi
 
+npm_ci_on_host() {
+  echo "==> npm ci (Alpine container tạm → ghi node_modules/, tránh npm trong docker build)"
+  docker run --rm \
+    -v "$ROOT:/app" -w /app \
+    -e NODE_OPTIONS=--max-old-space-size=384 \
+    node:24-alpine \
+    sh -c 'set -eux
+      for attempt in 1 2 3 4 5; do
+        echo "==> npm ci attempt ${attempt}/5"
+        npm ci --omit=dev && exit 0
+        echo "==> thất bại, chờ 20s..."
+        sleep 20
+      done
+      echo "==> fallback npm install"
+      npm install --omit=dev'
+}
+
 echo "==> Backup DB (nếu container đang chạy)"
 if docker compose ps -q myquang 2>/dev/null | grep -q .; then
   docker compose exec -T myquang cp /data/myquang.db "/data/myquang.db.bak-$(date +%F-%H%M)" || true
@@ -26,8 +43,15 @@ if ! grep -q "gioi-thieu" src/server.js 2>/dev/null; then
   exit 1
 fi
 
-echo "==> docker compose build (no cache) + force recreate"
-docker compose build --no-cache
+npm_ci_on_host
+
+if [[ ! -f node_modules/express/package.json ]]; then
+  echo "ERROR: npm ci không tạo được node_modules."
+  exit 1
+fi
+
+echo "==> docker compose build + force recreate"
+docker compose build
 docker compose up -d --force-recreate
 
 echo "==> Kiểm tra code trong container"
@@ -42,8 +66,9 @@ fi
 
 echo "==> Kiểm tra HTTP /gioi-thieu"
 sleep 2
-if ! curl -sf -o /dev/null -w "%{http_code}" http://127.0.0.1:3001/gioi-thieu | grep -q 200; then
-  echo "WARN: /gioi-thieu chưa trả 200 — xem logs bên dưới."
+HTTP_CODE="$(curl -sf -o /dev/null -w "%{http_code}" http://127.0.0.1:3001/gioi-thieu || echo 000)"
+if [[ "$HTTP_CODE" != "200" ]]; then
+  echo "WARN: /gioi-thieu trả ${HTTP_CODE} (kỳ vọng 200) — xem logs bên dưới."
 fi
 
 echo "==> Migrate DB (ban ao, read-only dry schema)"
@@ -58,4 +83,4 @@ docker compose logs --tail=20 myquang
 echo "==> Audit payments (read-only)"
 docker compose exec -T myquang node scripts/audit-payments.js || true
 
-echo "Done. App: http://<host>:3001"
+echo "Done. App: http://<host>:3001/gioi-thieu"
