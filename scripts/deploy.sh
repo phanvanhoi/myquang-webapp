@@ -14,20 +14,7 @@ if [[ ! -f .env ]] || ! grep -q '^SECRET_KEY=.\+' .env 2>/dev/null; then
 fi
 
 npm_ci_on_host() {
-  echo "==> npm ci (Alpine container tạm → ghi node_modules/, tránh npm trong docker build)"
-  docker run --rm \
-    -v "$ROOT:/app" -w /app \
-    -e NODE_OPTIONS=--max-old-space-size=384 \
-    node:24-alpine \
-    sh -c 'set -eux
-      for attempt in 1 2 3 4 5; do
-        echo "==> npm ci attempt ${attempt}/5"
-        npm ci --omit=dev && exit 0
-        echo "==> thất bại, chờ 20s..."
-        sleep 20
-      done
-      echo "==> fallback npm install"
-      npm install --omit=dev'
+  bash "$ROOT/scripts/install-deps.sh"
 }
 
 echo "==> Backup DB (nếu container đang chạy)"

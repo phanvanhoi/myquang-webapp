@@ -35,12 +35,7 @@ if docker compose ps -q myquang 2>/dev/null | grep -q .; then
 fi
 
 echo "==> npm ci"
-if command -v node >/dev/null 2>&1; then
-  export NODE_OPTIONS=--max-old-space-size=512
-  npm ci --omit=dev
-else
-  docker run --rm -v "$ROOT:/app" -w /app node:24-alpine npm ci --omit=dev
-fi
+bash "$ROOT/scripts/install-deps.sh"
 
 export NODE_ENV=production
 export PORT=3001
