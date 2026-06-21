@@ -2,559 +2,79 @@
 {% block title %}Gọi món — {{ table.name }} — {{ settings.restaurant_name or 'MyQuang' }}{% endblock %}
 
 {% block head %}
-<style>
-  :root {
-    --mq-bg: #fff9f0;
-    --mq-ink: #292018;
-    --mq-accent: #c2410c;
-    --mq-accent-soft: #ffedd5;
-    --mq-line: rgba(194, 65, 12, 0.12);
-  }
-
-  body { background: var(--mq-bg); color: var(--mq-ink); }
-
-  .mq-page {
-    background:
-      radial-gradient(circle at 0% 0%, rgba(251, 191, 36, 0.18), transparent 42%),
-      radial-gradient(circle at 100% 12%, rgba(234, 88, 12, 0.1), transparent 36%),
-      var(--mq-bg);
-  }
-
-  .mq-hero {
-    background: linear-gradient(135deg, #9a3412 0%, #c2410c 45%, #ea580c 100%);
-    position: relative;
-    overflow: hidden;
-  }
-  .mq-hero::after {
-    content: '';
-    position: absolute;
-    inset: auto 0 0 0;
-    height: 28px;
-    background: var(--mq-bg);
-    border-radius: 24px 24px 0 0;
-  }
-  .mq-hero-pattern {
-    position: absolute;
-    inset: 0;
-    opacity: 0.08;
-    background-image: radial-gradient(circle, #fff 1px, transparent 1px);
-    background-size: 14px 14px;
-  }
-
-  .mq-table-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.35rem 0.75rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    backdrop-filter: blur(6px);
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  .mq-summary {
-    border: 1px solid var(--mq-line);
-    box-shadow: 0 10px 30px rgba(154, 52, 18, 0.08);
-  }
-
-  .mq-sticky-tools {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    background: rgba(255, 249, 240, 0.92);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--mq-line);
-  }
-
-  .mq-search {
-    border: 1px solid var(--mq-line);
-    background: #fff;
-    box-shadow: 0 2px 8px rgba(154, 52, 18, 0.04);
-  }
-  .mq-search:focus {
-    outline: none;
-    border-color: #fb923c;
-    box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.25);
-  }
-
-  .mq-cat {
-    scroll-snap-align: start;
-    transition: all 0.15s ease;
-  }
-  .mq-cat-active {
-    background: linear-gradient(135deg, #c2410c, #ea580c);
-    color: #fff;
-    border-color: transparent;
-    box-shadow: 0 4px 14px rgba(194, 65, 12, 0.28);
-  }
-
-  .menu-card {
-    border: 1px solid var(--mq-line);
-    background: #fff;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-    box-shadow: 0 2px 10px rgba(41, 32, 24, 0.04);
-  }
-  .menu-card:active { transform: scale(0.985); }
-  .menu-card.has-qty {
-    border-color: rgba(194, 65, 12, 0.35);
-    box-shadow: 0 8px 22px rgba(194, 65, 12, 0.12);
-  }
-
-  .img-placeholder {
-    background: linear-gradient(145deg, #fff7ed 0%, #fed7aa 100%);
-  }
-  img.menu-img.is-error { display: none; }
-
-  .mq-stepper {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.2rem;
-    border-radius: 999px;
-    background: var(--mq-accent-soft);
-    border: 1px solid rgba(194, 65, 12, 0.18);
-  }
-  .mq-stepper button {
-    width: 2rem;
-    height: 2rem;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: #fff;
-    color: var(--mq-accent);
-    font-weight: 700;
-    border: 1px solid rgba(194, 65, 12, 0.15);
-  }
-  .mq-stepper span {
-    min-width: 1.5rem;
-    text-align: center;
-    font-weight: 800;
-    color: var(--mq-accent);
-    font-size: 0.875rem;
-  }
-
-  .mq-add-btn {
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #ea580c, #c2410c);
-    color: #fff;
-    box-shadow: 0 4px 12px rgba(194, 65, 12, 0.35);
-  }
-
-  .mq-status {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.15rem 0.45rem;
-    border-radius: 999px;
-    font-size: 0.625rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-  }
-  .mq-status-pending { background: #fef3c7; color: #92400e; }
-  .mq-status-preparing { background: #ffedd5; color: #c2410c; }
-  .mq-status-served { background: #dcfce7; color: #166534; }
-  .mq-status-cancelled { background: #f3f4f6; color: #6b7280; }
-
-  .mq-cart-bar {
-    background: linear-gradient(135deg, #9a3412 0%, #c2410c 55%, #ea580c 100%);
-    box-shadow: 0 -8px 32px rgba(154, 52, 18, 0.35);
-  }
-
-  .mq-sheet {
-    border-radius: 1.5rem 1.5rem 0 0;
-    box-shadow: 0 -20px 50px rgba(41, 32, 24, 0.18);
-  }
-  .mq-sheet-handle {
-    width: 2.5rem;
-    height: 0.3rem;
-    border-radius: 999px;
-    background: #e5e7eb;
-    margin: 0.65rem auto 0;
-  }
-
-  .mq-toast {
-    animation: mqToastIn 0.35s ease;
-  }
-  @keyframes mqToastIn {
-    from { transform: translateY(-8px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-  }
-
-  .mq-sent-overlay {
-    animation: mqSentFadeIn 0.4s ease;
-  }
-  @keyframes mqSentFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  .mq-sent-check {
-    animation: mqSentPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
-  }
-  @keyframes mqSentPop {
-    from { transform: scale(0.4); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-  }
-
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-</style>
+<script src="/js/pub-menu-order.js"></script>
 <script src="/js/pub-table-sent.js"></script>
 {% endblock %}
 
 {% block content %}
 <script>
   const _menuItems = {{ items | tojson | safe }};
+  const _heroImages = {{ heroImages | tojson | safe }};
   const _tableToken = {{ token | tojson | safe }};
   const _initialSummary = {{ initialSummary | tojson | safe }};
   const _initialCanSubmit = {{ canSubmit | tojson | safe }};
   const _initialBlockReason = {{ blockReason | tojson | safe }};
-  const _restaurantName = {{ (settings.restaurant_name or 'MyQuang') | tojson | safe }};
   const _tableName = {{ table.name | tojson | safe }};
 </script>
 
-<div x-data="tableGuestOrder(_tableToken, _menuItems, _initialSummary, _initialCanSubmit, _initialBlockReason, _tableName)"
+<div x-data="tableGuestOrder(_tableToken, _menuItems, _heroImages, _initialSummary, _initialCanSubmit, _initialBlockReason, _tableName)"
      x-init="init()"
-     class="mq-page pb-28 min-h-screen">
+     :class="totalItemCount > 0 && !cartOpen ? 'pub-page--table-cart' : ''"
+     class="pub-page pub-grain relative min-h-screen">
 
-  <header class="mq-hero text-white relative">
-    <div class="mq-hero-pattern"></div>
-    <div class="max-w-3xl mx-auto px-4 pt-6 pb-10 relative z-10">
-      <div class="mq-table-badge mb-3">
-        <i data-lucide="qr-code" class="w-3.5 h-3.5"></i>
-        Gọi món tại bàn
-      </div>
-      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight">
-        {{ table.name }}
-      </h1>
-      <p class="text-orange-100/90 mt-1 text-sm font-medium">
-        {{ table.floor_name }} · {{ table.code }}
-      </p>
-      <p class="text-orange-50/80 mt-3 text-xs leading-relaxed max-w-md">
-        Chọn món và gửi xuống bếp — món sẽ được phục vụ tại bàn. Bạn có thể gọi thêm nhiều lần.
-      </p>
-    </div>
-  </header>
+  {% set heroBadgeIcon = 'qr-code' %}
+  {% set heroBadgeText = 'Gọi món tại bàn' %}
+  {% set heroTitle = table.name %}
+  {% set heroMeta = table.floor_name ~ ' · ' ~ table.code %}
+  {% set heroSubtitle = 'Chọn món và gửi xuống bếp — món sẽ được phục vụ tại bàn.' %}
+  {% include "public/partials/menu_hero.html" %}
 
-  <div x-show="!canSubmit && blockReason" x-cloak class="max-w-3xl mx-auto px-4 -mt-1 relative z-10">
-    <div class="bg-white border border-amber-300 text-amber-900 text-sm rounded-2xl px-4 py-3 flex items-start gap-2 shadow-sm">
+  <div x-show="!canSubmit && blockReason" x-cloak class="max-w-3xl mx-auto px-4 -mt-2 relative z-10">
+    <div class="pub-card rounded-2xl px-4 py-3 flex items-start gap-2 text-sm text-amber-900 border-amber-300/60">
       <i data-lucide="alert-circle" class="w-4 h-4 shrink-0 mt-0.5 text-amber-600"></i>
       <span x-text="blockReason"></span>
     </div>
   </div>
 
-  <section x-show="orderSummary" x-cloak class="max-w-3xl mx-auto px-4 mt-3 relative z-10">
-    <div class="mq-summary bg-white rounded-2xl overflow-hidden">
-      <button type="button" @click="summaryOpen = !summaryOpen"
-              class="w-full px-4 py-3.5 flex items-center justify-between text-left gap-3">
-        <div class="min-w-0">
-          <div class="flex items-center gap-2">
-            <span class="text-[11px] font-bold uppercase tracking-wider text-orange-700">Đã gọi</span>
-            <span class="text-[11px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 font-semibold"
-                  x-text="(orderSummary ? orderSummary.item_count : 0) + ' món'"></span>
-          </div>
-          <p class="text-lg font-extrabold text-orange-700 mt-1 tabular-nums"
-             x-text="orderSummary ? fmt(orderSummary.final_amount != null ? orderSummary.final_amount : orderSummary.total_amount) : ''"></p>
-          <p x-show="orderSummary && orderSummary.discount_amount > 0"
-             class="text-xs text-gray-400 mt-0.5">
-            Trước giảm: <span x-text="orderSummary ? fmt(orderSummary.total_amount) : ''"></span>
-          </p>
-        </div>
-        <div class="shrink-0 flex items-center gap-1 text-xs text-gray-400 font-medium">
-          <span x-text="summaryOpen ? 'Thu gọn' : 'Chi tiết'"></span>
-          <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"
-             :class="summaryOpen ? 'rotate-180' : ''"></i>
-        </div>
-      </button>
+  {% include "public/partials/menu_table_summary.html" %}
+  {% include "public/partials/menu_search_tabs.html" %}
+  {% include "public/partials/menu_grid.html" %}
 
-      <div x-show="summaryOpen" class="border-t border-orange-50 max-h-72 overflow-y-auto">
-        <template x-for="(row, idx) in (orderSummary ? orderSummary.items : [])" :key="idx">
-          <div class="px-4 py-3 flex items-start justify-between gap-3 border-b border-gray-50 last:border-0">
-            <div class="min-w-0">
-              <p class="font-semibold text-sm text-gray-800 leading-snug"
-                 x-text="row.quantity + '× ' + row.item_name"></p>
-              <p x-show="row.note" class="text-xs text-gray-400 mt-0.5 truncate" x-text="row.note"></p>
-            </div>
-            <div class="text-right shrink-0 space-y-1">
-              <p class="font-bold text-sm text-orange-700 tabular-nums" x-text="fmt(row.subtotal)"></p>
-              <span class="mq-status"
-                    :class="{
-                      'mq-status-pending': row.status === 'pending',
-                      'mq-status-preparing': row.status === 'preparing',
-                      'mq-status-served': row.status === 'served',
-                      'mq-status-cancelled': row.status === 'cancelled',
-                    }"
-                    x-text="statusLabel(row.status)"></span>
-            </div>
-          </div>
-        </template>
-      </div>
-    </div>
-  </section>
-
-  <div x-show="successMsg" x-cloak class="max-w-3xl mx-auto px-4 mt-3">
-    <div class="mq-toast bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-2xl px-4 py-3 flex items-center gap-2">
-      <i data-lucide="check-circle" class="w-4 h-4 shrink-0"></i>
-      <span x-text="successMsg"></span>
-    </div>
-  </div>
-
-  <div class="mq-sticky-tools mt-3">
-    <div class="max-w-3xl mx-auto px-4 py-3 space-y-3">
-      <div class="relative">
-        <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-        <input type="search" x-model="search" placeholder="Tìm món, ví dụ: Mì Quảng..."
-               class="mq-search w-full pl-10 pr-3 h-12 rounded-2xl text-sm"/>
-      </div>
-
-      <div class="flex gap-2 overflow-x-auto no-scrollbar pb-0.5 snap-x snap-mandatory">
-        <button @click="activeCat = 0"
-                :class="activeCat === 0 ? 'mq-cat-active' : 'bg-white text-gray-600 border-gray-200'"
-                class="mq-cat shrink-0 h-9 px-4 rounded-full text-xs font-bold border">
-          Tất cả
-        </button>
-        {% for cat in categories %}
-        <button @click="activeCat = {{ cat.id }}"
-                :class="activeCat === {{ cat.id }} ? 'mq-cat-active' : 'bg-white text-gray-600 border-gray-200'"
-                class="mq-cat shrink-0 h-9 px-4 rounded-full text-xs font-bold border">
-          {{ cat.name }}
-        </button>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-
-  <main class="max-w-3xl mx-auto px-4 py-4">
-    <div class="flex items-center justify-between mb-3">
-      <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Thực đơn</p>
-      <p class="text-xs text-gray-400"><span x-text="filteredItems.length"></span> món</p>
-    </div>
-
-    <div class="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-3">
-      <template x-for="item in filteredItems" :key="item.id">
-        <article class="menu-card rounded-2xl overflow-hidden flex flex-row sm:flex-col"
-                 :class="cartCount(item.id) > 0 ? 'has-qty' : ''">
-
-          <div class="relative w-[7.5rem] h-[7.5rem] sm:w-full sm:aspect-[4/3] shrink-0 overflow-hidden img-placeholder">
-            <img :src="item.image_url"
-                 x-show="item.image_url"
-                 @error="$event.target.classList.add('is-error')"
-                 class="menu-img w-full h-full object-cover" loading="lazy" />
-            <div x-show="!item.image_url"
-                 class="absolute inset-0 flex items-center justify-center text-orange-200">
-              <i data-lucide="utensils" class="w-10 h-10"></i>
-            </div>
-          </div>
-
-          <div class="flex-1 min-w-0 p-3 flex flex-col justify-between gap-2">
-            <div>
-              <h3 class="font-bold text-[15px] leading-snug text-gray-900 line-clamp-2" x-text="item.name"></h3>
-              <p x-show="item.category_name" class="text-[11px] text-gray-400 mt-0.5 truncate" x-text="item.category_name"></p>
-            </div>
-
-            <div class="flex items-end justify-between gap-2">
-              <p class="text-base font-extrabold text-orange-700 tabular-nums" x-text="fmt(item.base_price)"></p>
-
-              <div x-show="canSubmit && cartCount(item.id) === 0">
-                <button type="button" @click.stop="addItem(item)" class="mq-add-btn" aria-label="Thêm món">
-                  <i data-lucide="plus" class="w-4 h-4"></i>
-                </button>
-              </div>
-
-              <div x-show="canSubmit && cartCount(item.id) > 0" class="mq-stepper" @click.stop>
-                <button type="button" @click="adjustItem(item, -1)" aria-label="Giảm">
-                  <i data-lucide="minus" class="w-3.5 h-3.5"></i>
-                </button>
-                <span x-text="cartCount(item.id)"></span>
-                <button type="button" @click="adjustItem(item, 1)" aria-label="Tăng">
-                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                </button>
-              </div>
-
-              <div x-show="!canSubmit" class="text-[11px] text-gray-400 font-medium">Chỉ xem</div>
-            </div>
-          </div>
-        </article>
-      </template>
-    </div>
-
-    <div x-show="filteredItems.length === 0" class="py-20 text-center">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-orange-50 mb-3">
-        <i data-lucide="search-x" class="w-8 h-8 text-orange-300"></i>
-      </div>
-      <p class="text-sm font-semibold text-gray-600">Không tìm thấy món</p>
-      <p class="text-xs text-gray-400 mt-1">Thử từ khóa khác hoặc chọn danh mục khác</p>
-    </div>
-  </main>
-
-  <div x-show="canSubmit && totalItemCount > 0 && !cartOpen" x-cloak
-       x-transition:enter="transition ease-out duration-200"
-       x-transition:enter-start="translate-y-full opacity-0"
-       x-transition:enter-end="translate-y-0 opacity-100"
-       class="fixed bottom-0 inset-x-0 z-30 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-2">
-    <button @click="cartOpen = true" type="button"
-            class="mq-cart-bar w-full max-w-3xl mx-auto h-[3.75rem] rounded-2xl text-white flex items-center justify-between px-5 active:scale-[0.99] transition-transform">
-      <div class="flex items-center gap-3">
-        <div class="relative w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
-          <i data-lucide="shopping-bag" class="w-5 h-5"></i>
-          <span class="absolute -top-1.5 -right-1.5 min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-white text-orange-700 text-[10px] font-extrabold flex items-center justify-center"
-                x-text="totalItemCount"></span>
-        </div>
-        <div class="text-left">
-          <p class="text-sm font-bold leading-none">Xem giỏ gửi bếp</p>
-          <p class="text-[11px] text-orange-100 mt-1" x-text="totalItemCount + ' món đang chọn'"></p>
-        </div>
-      </div>
-      <span class="text-lg font-extrabold tabular-nums" x-text="fmt(totalAmount)"></span>
-    </button>
-  </div>
-
-  <div x-show="cartOpen" x-cloak class="fixed inset-0 z-50">
-    <div class="absolute inset-0 bg-black/45 backdrop-blur-[1px]" @click="cartOpen = false"></div>
-    <div class="mq-sheet absolute bottom-0 left-0 right-0 max-h-[88dvh] bg-white flex flex-col" @click.stop>
-      <div class="mq-sheet-handle"></div>
-
-      <div class="px-5 pt-2 pb-3 border-b border-gray-100 flex items-center justify-between">
-        <div>
-          <h2 class="font-extrabold text-gray-900 text-lg">Giỏ gửi bếp</h2>
-          <p class="text-xs text-gray-400 mt-0.5" x-text="totalItemCount + ' món · ' + fmt(totalAmount)"></p>
-        </div>
-        <button type="button" @click="cartOpen = false"
-                class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <div class="flex-1 overflow-y-auto">
-        <template x-if="cart.length === 0">
-          <div class="py-14 text-center text-gray-400">
-            <i data-lucide="shopping-bag" class="w-10 h-10 mx-auto mb-2 opacity-40"></i>
-            <p class="text-sm">Chưa chọn món</p>
-          </div>
-        </template>
-
-        <div class="divide-y divide-gray-50">
-          <template x-for="(entry, idx) in cart" :key="entry.item_id">
-            <div class="px-5 py-3.5 flex items-center gap-3">
-              <div class="flex-1 min-w-0">
-                <p class="font-semibold text-sm text-gray-900 truncate" x-text="entry.name"></p>
-                <p class="text-xs text-orange-700 font-bold mt-0.5 tabular-nums" x-text="fmt(entry.price) + ' / phần'"></p>
-              </div>
-              <div class="mq-stepper shrink-0">
-                <button type="button" @click="updateQty(idx, -1)">
-                  <i data-lucide="minus" class="w-3.5 h-3.5"></i>
-                </button>
-                <span x-text="entry.qty"></span>
-                <button type="button" @click="updateQty(idx, 1)">
-                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                </button>
-              </div>
-              <p class="w-20 text-right font-extrabold text-sm text-orange-700 tabular-nums shrink-0"
-                 x-text="fmt(entry.price * entry.qty)"></p>
-            </div>
-          </template>
-        </div>
-      </div>
-
-      <div class="border-t border-gray-100 p-4 space-y-3 pb-[max(env(safe-area-inset-bottom),16px)] bg-white">
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-gray-500">Tổng lần gửi này</span>
-          <span class="text-2xl font-extrabold text-orange-700 tabular-nums" x-text="fmt(totalAmount)"></span>
-        </div>
-        <button type="button" @click="submit()" :disabled="submitting || cart.length === 0"
-                :class="submitting || cart.length === 0 ? 'bg-gray-200 text-gray-400' : 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-200'"
-                class="w-full h-12 rounded-2xl text-sm font-extrabold flex items-center justify-center gap-2 transition-all">
-          <template x-if="submitting">
-            <span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-          </template>
-          <template x-if="!submitting">
-            <i data-lucide="send" class="w-5 h-5"></i>
-          </template>
-          <span x-text="submitting ? 'Đang gửi xuống bếp...' : 'Gửi xuống bếp'"></span>
-        </button>
-        <p x-show="errorMsg" x-cloak class="text-xs text-red-600 text-center font-medium" x-text="errorMsg"></p>
-      </div>
-    </div>
-  </div>
-
-  {# Overlay — đơn đã gửi bếp, chuyển sang giới thiệu #}
-  <div x-show="showSentOverlay" x-cloak
-       class="mq-sent-overlay fixed inset-0 z-[60] flex items-center justify-center p-6"
-       style="background: rgba(247, 236, 208, 0.96);">
-    <div class="max-w-sm w-full text-center">
-      <div class="mq-sent-check mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-xl shadow-emerald-200/60 mb-6">
-        <i data-lucide="check" class="w-10 h-10 text-white stroke-[3]"></i>
-      </div>
-      <h2 class="font-extrabold text-2xl text-[#292018] leading-tight">
-        Đơn của bạn đã được<br>gửi xuống bếp!
-      </h2>
-      <p class="mt-3 text-sm text-[#5c4a1a]/85 leading-relaxed">
-        Bếp đang chế biến món cho <span class="font-bold text-orange-700" x-text="tableName"></span>.
-      </p>
-      <div class="mt-6 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/80 border border-amber-200/60 text-sm text-[#8a6502] font-medium">
-        <span class="inline-block w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></span>
-        <span>Chuyển trang sau <span class="font-bold tabular-nums" x-text="redirectSec"></span>s…</span>
-      </div>
-    </div>
-  </div>
+  {% set cartBarFixed = true %}
+  {% include "public/partials/menu_cart_bar.html" %}
+  {% include "public/partials/menu_cart_drawer.html" %}
+  {% include "public/partials/menu_sent_overlay.html" %}
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-function tableGuestOrder(token, menuItems, initialSummary, initialCanSubmit, initialBlockReason, tableName) {
+function tableGuestOrder(token, menuItems, heroImages, initialSummary, initialCanSubmit, initialBlockReason, tableName) {
+  const base = createPubMenuBase(menuItems, {
+    heroImages,
+    canSubmit: initialCanSubmit !== false,
+    orderMode: 'table',
+    cartBarLabel: 'Xem giỏ gửi bếp',
+    cartDrawerTitle: 'Giỏ gửi bếp',
+    submitLabel: 'Gửi xuống bếp',
+    submitLabelLoading: 'Đang gửi xuống bếp...',
+  });
+
   return {
+    ...base,
     token,
     tableName: tableName || '',
-    items: menuItems,
-    search: '',
-    activeCat: 0,
-    cart: [],
-    cartOpen: false,
     summaryOpen: true,
-    submitting: false,
-    errorMsg: '',
-    successMsg: '',
+    orderSummary: initialSummary,
+    blockReason: initialBlockReason || null,
     showSentOverlay: false,
     redirectSec: 3,
-    orderSummary: initialSummary,
-    canSubmit: initialCanSubmit !== false,
-    blockReason: initialBlockReason || null,
     pollTimer: null,
     redirectTimer: null,
 
     init() {
-      this.$nextTick(() => lucide.createIcons());
+      this.initPubMenu();
       this.pollTimer = setInterval(() => this.refreshStatus(), 15000);
-    },
-
-    get filteredItems() {
-      const s = this.search.toLowerCase().trim();
-      return this.items.filter(it => {
-        const catOk = this.activeCat === 0 || it.category_id === this.activeCat;
-        const txtOk = !s || it.name.toLowerCase().includes(s);
-        return catOk && txtOk;
-      });
-    },
-
-    get totalAmount() {
-      return this.cart.reduce((sum, e) => sum + e.price * e.qty, 0);
-    },
-
-    get totalItemCount() {
-      return this.cart.reduce((sum, e) => sum + e.qty, 0);
-    },
-
-    fmt(n) {
-      return new Intl.NumberFormat('vi-VN').format(Math.round(n || 0)) + 'đ';
     },
 
     statusLabel(status) {
@@ -565,54 +85,6 @@ function tableGuestOrder(token, menuItems, initialSummary, initialCanSubmit, ini
         cancelled: 'Đã hủy',
       };
       return map[status] || status;
-    },
-
-    statusClass(status) {
-      const map = {
-        pending: 'mq-status-pending',
-        preparing: 'mq-status-preparing',
-        served: 'mq-status-served',
-        cancelled: 'mq-status-cancelled',
-      };
-      return map[status] || 'mq-status-pending';
-    },
-
-    cartCount(itemId) {
-      const e = this.cart.find(x => x.item_id === itemId);
-      return e ? e.qty : 0;
-    },
-
-    addItem(item) {
-      if (!this.canSubmit) return;
-      this.adjustItem(item, 1);
-    },
-
-    adjustItem(item, delta) {
-      if (!this.canSubmit) return;
-      const existing = this.cart.find(e => e.item_id === item.id);
-      if (existing) {
-        const newQty = existing.qty + delta;
-        if (newQty <= 0) {
-          this.cart = this.cart.filter(e => e.item_id !== item.id);
-        } else {
-          existing.qty = newQty;
-        }
-      } else if (delta > 0) {
-        this.cart.push({
-          item_id: item.id,
-          name: item.name,
-          price: item.base_price,
-          qty: 1,
-        });
-      }
-      this.$nextTick(() => lucide.createIcons());
-    },
-
-    updateQty(idx, delta) {
-      const e = this.cart[idx];
-      const newQty = e.qty + delta;
-      if (newQty <= 0) this.cart.splice(idx, 1);
-      else e.qty = newQty;
     },
 
     async refreshStatus() {
@@ -630,7 +102,6 @@ function tableGuestOrder(token, menuItems, initialSummary, initialCanSubmit, ini
     async submit() {
       if (!this.canSubmit || this.submitting || this.cart.length === 0) return;
       this.errorMsg = '';
-      this.successMsg = '';
       this.submitting = true;
 
       try {
@@ -638,7 +109,7 @@ function tableGuestOrder(token, menuItems, initialSummary, initialCanSubmit, ini
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            items: this.cart.map(e => ({
+            items: this.cart.map((e) => ({
               item_id: e.item_id,
               quantity: e.qty,
               note: '',
@@ -648,9 +119,7 @@ function tableGuestOrder(token, menuItems, initialSummary, initialCanSubmit, ini
         const data = await resp.json();
         if (data.success) {
           const name = (data.table && data.table.name) || this.tableName;
-          if (window.MqTableSent) {
-            MqTableSent.save({ tableName: name });
-          }
+          if (window.MqTableSent) MqTableSent.save({ tableName: name });
           this.cart = [];
           this.cartOpen = false;
           this.orderSummary = data.summary;

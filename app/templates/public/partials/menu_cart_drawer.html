@@ -1,0 +1,126 @@
+<div x-show="cartOpen" x-cloak
+     x-transition:enter="transition-opacity duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition-opacity duration-150"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     class="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm"
+     @click.self="cartOpen = false">
+
+  <div x-show="cartOpen"
+       x-transition:enter="transition-transform duration-350 ease-out"
+       x-transition:enter-start="translate-y-full"
+       x-transition:enter-end="translate-y-0"
+       x-transition:leave="transition-transform duration-250 ease-in"
+       x-transition:leave-start="translate-y-0"
+       x-transition:leave-end="translate-y-full"
+       class="absolute bottom-0 left-0 right-0 max-h-[88vh] bg-[#fffbeb] rounded-t-3xl shadow-2xl flex flex-col"
+       @click.stop>
+
+    <div class="w-10 h-1 rounded-full bg-amber-200 mx-auto mt-3 shrink-0"></div>
+
+    <div class="px-5 py-4 border-b border-amber-100 flex items-center justify-between sticky top-0 bg-[#fffbeb] rounded-t-3xl">
+      <div>
+        <h2 class="font-display text-2xl font-bold text-[#8a6502]" x-text="cartDrawerTitle"></h2>
+        <p class="text-xs text-[#5c4a1a]/60" x-text="totalItemCount + ' món · ' + fmt(totalAmount)"></p>
+      </div>
+      <button type="button" @click="cartOpen = false" aria-label="Đóng"
+              class="w-10 h-10 rounded-full bg-amber-100/80 flex items-center justify-center text-[#8a6502]">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto">
+      <template x-if="cart.length === 0">
+        <div class="py-16 text-center text-[#8a6502]/50">
+          <i data-lucide="shopping-bag" class="w-12 h-12 mx-auto mb-3 opacity-40"></i>
+          <p class="text-sm">Giỏ trống — chọn món từ thực đơn nhé!</p>
+        </div>
+      </template>
+
+      <div class="divide-y divide-amber-50">
+        <template x-for="(entry, idx) in cart" :key="entry.item_id">
+          <div class="px-5 py-3 flex items-start gap-3">
+            <div class="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-amber-100">
+              <img :src="entry.image_url" x-show="entry.image_url"
+                   @error="$event.target.style.display='none'"
+                   class="w-full h-full object-cover" alt="">
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-semibold text-sm text-[#5c4a1a] truncate" x-text="entry.name"></div>
+              <div class="text-xs text-[#c2410c] font-bold mt-0.5" x-text="fmt(entry.price)"></div>
+              <div class="flex items-center gap-2 mt-2">
+                <button type="button" @click="updateQty(idx, -1)"
+                        class="w-8 h-8 rounded-full border border-amber-200 bg-white flex items-center justify-center text-[#8a6502] active:bg-red-50">
+                  <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+                </button>
+                <span class="w-8 text-center text-sm font-bold" x-text="entry.qty"></span>
+                <button type="button" @click="updateQty(idx, 1)"
+                        class="w-8 h-8 rounded-full border border-amber-200 bg-white flex items-center justify-center text-[#8a6502] active:bg-green-50">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                </button>
+                <span class="ml-auto text-sm font-bold text-[#c2410c]" x-text="fmt(entry.price * entry.qty)"></span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      {# Giao hàng — chỉ /order #}
+      <div x-show="orderMode === 'delivery' && cart.length > 0" class="px-5 py-4 space-y-3 border-t border-amber-100">
+        <h3 class="font-semibold text-[#8a6502] text-sm flex items-center gap-2">
+          <i data-lucide="user" class="w-4 h-4"></i> Thông tin giao hàng
+        </h3>
+        <div>
+          <label class="block text-xs text-[#5c4a1a]/60 mb-1">Họ tên <span class="text-red-500">*</span></label>
+          <input type="text" x-model="customer.name" placeholder="Nguyễn Văn A"
+                 class="w-full h-11 px-3 rounded-xl border border-amber-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50"/>
+        </div>
+        <div>
+          <label class="block text-xs text-[#5c4a1a]/60 mb-1">Số điện thoại <span class="text-red-500">*</span></label>
+          <input type="tel" x-model="customer.phone" inputmode="tel" placeholder="0901234567"
+                 class="w-full h-11 px-3 rounded-xl border border-amber-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50"/>
+        </div>
+        <div>
+          <label class="block text-xs text-[#5c4a1a]/60 mb-1">Địa chỉ giao hàng <span class="text-red-500">*</span></label>
+          <textarea x-model="customer.address" rows="2" placeholder="Số nhà, đường, phường, quận..."
+                    class="w-full px-3 py-2.5 rounded-xl border border-amber-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 resize-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs text-[#5c4a1a]/60 mb-1">Ghi chú</label>
+          <input type="text" x-model="customer.note" placeholder="Ít cay, gọi trước khi giao..."
+                 class="w-full h-11 px-3 rounded-xl border border-amber-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50"/>
+        </div>
+        <p class="text-xs text-[#5c4a1a]/50 flex items-center gap-1.5">
+          <i data-lucide="banknote" class="w-3.5 h-3.5"></i> Thanh toán tiền mặt khi nhận hàng (COD)
+        </p>
+      </div>
+
+      {# Gọi tại bàn — chỉ /t/:token #}
+      <div x-show="orderMode === 'table' && cart.length > 0" class="px-5 py-3 border-t border-amber-100">
+        <p class="text-xs text-[#5c4a1a]/60 flex items-start gap-2 leading-relaxed">
+          <i data-lucide="info" class="w-4 h-4 shrink-0 mt-0.5 text-[#8a6502]"></i>
+          Món sẽ được phục vụ tại bàn. Sau khi gửi, bạn có thể đọc thêm về quán trong lúc chờ.
+        </p>
+      </div>
+    </div>
+
+    <div x-show="cart.length > 0"
+         class="border-t border-amber-100 p-4 space-y-2 sticky bottom-0 bg-[#fffbeb] pb-[max(env(safe-area-inset-bottom),16px)]">
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-[#5c4a1a]/60" x-text="orderMode === 'table' ? 'Tổng lần gửi này' : 'Tổng cộng'"></span>
+        <span class="text-2xl font-extrabold text-[#c2410c]" x-text="fmt(totalAmount)"></span>
+      </div>
+      <button type="button" @click="submit()" :disabled="submitting"
+              :class="submitting ? 'bg-gray-200 text-gray-400' : (orderMode === 'table' ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg' : 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg active:scale-[0.98]')"
+              class="w-full h-12 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+        <span x-show="submitting" class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+        <i x-show="!submitting && orderMode === 'delivery'" data-lucide="check-circle" class="w-5 h-5"></i>
+        <i x-show="!submitting && orderMode === 'table'" data-lucide="send" class="w-5 h-5"></i>
+        <span x-text="submitting ? submitLabelLoading : submitLabel"></span>
+      </button>
+      <p x-show="errorMsg" x-cloak class="text-xs text-red-500 text-center" x-text="errorMsg"></p>
+    </div>
+  </div>
+</div>

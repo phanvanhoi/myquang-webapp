@@ -1,0 +1,56 @@
+<main class="max-w-3xl mx-auto px-4 py-4">
+  <p class="text-xs text-[#8a6502]/70 mb-3 font-medium">
+    <span x-text="filteredItems.length"></span> món · Ấm Quê
+  </p>
+
+  <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+    <template x-for="item in filteredItems" :key="item.id">
+      <div @click="canSubmit !== false && addItem(item)"
+           class="pub-menu-card pub-reveal-scroll bg-white/90 rounded-2xl border border-amber-100/80 overflow-hidden flex flex-col shadow-sm"
+           :class="canSubmit !== false ? 'cursor-pointer' : 'opacity-90'"
+           x-init="$nextTick(() => observeReveal($el))">
+
+        <div class="relative aspect-square overflow-hidden bg-amber-100/50">
+          <div class="pub-img-skeleton absolute inset-0" x-show="!item._imgLoaded"></div>
+          <img :src="item.image_url"
+               x-show="item.image_url"
+               @load="item._imgLoaded = true"
+               @error="item._imgLoaded = true; $event.target.style.display='none'"
+               class="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+               loading="lazy" decoding="async">
+          <div x-show="!item.image_url"
+               class="absolute inset-0 flex items-center justify-center text-amber-300/80">
+            <i data-lucide="utensils" class="w-10 h-10"></i>
+          </div>
+          <span x-show="cartCount(item.id) > 0"
+                class="absolute top-2 right-2 min-w-[26px] h-7 px-1.5 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-white text-xs font-bold flex items-center justify-center shadow-lg"
+                :class="cartBumpId === item.id ? 'pub-cart-bump' : ''"
+                x-text="cartCount(item.id)"></span>
+        </div>
+
+        <div class="p-3 flex flex-col gap-1 flex-1">
+          <div class="font-semibold text-sm text-[#5c4a1a] leading-snug line-clamp-2" x-text="item.name"></div>
+          <div class="mt-auto flex items-center justify-between pt-2">
+            <span class="text-base font-extrabold text-[#c2410c]" x-text="fmt(item.base_price)"></span>
+            <template x-if="canSubmit !== false">
+              <button type="button"
+                      class="w-9 h-9 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-md active:scale-90 transition-transform"
+                      :aria-label="'Thêm ' + item.name"
+                      @click.stop="addItem(item)">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+              </button>
+            </template>
+            <span x-show="canSubmit === false" class="text-[10px] text-[#8a6502]/50 font-semibold">Chỉ xem</span>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <div x-show="filteredItems.length === 0" x-cloak class="py-20 text-center">
+    <div class="inline-flex w-16 h-16 rounded-full bg-amber-100 items-center justify-center mb-4 animate-bounce">
+      <i data-lucide="search-x" class="w-8 h-8 text-amber-400/70"></i>
+    </div>
+    <p class="text-sm text-[#8a6502]/60 font-medium">Không tìm thấy món phù hợp</p>
+  </div>
+</main>

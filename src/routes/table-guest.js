@@ -6,18 +6,19 @@ const {
   getTableGuestStatus,
   submitGuestItems,
 } = require('../lib/table-guest');
+const { enrichMenuItems, HERO_IMAGES } = require('../lib/menu-stock-images');
 
 function loadMenuData() {
   const categories = q.all(
     `SELECT * FROM menu_categories WHERE is_active = 1 ORDER BY sort_order, name`
   );
-  const items = q.all(
+  const items = enrichMenuItems(q.all(
     `SELECT mi.*, mc.name AS category_name
      FROM menu_items mi
      JOIN menu_categories mc ON mc.id = mi.category_id
      WHERE mi.is_active = 1 AND mi.is_available = 1
      ORDER BY mc.sort_order, mi.sort_order, mi.name`
-  );
+  ));
   return { categories, items };
 }
 
@@ -38,6 +39,7 @@ router.get('/:token', (req, res) => {
     table,
     categories,
     items,
+    heroImages: HERO_IMAGES,
     initialSummary: status.order,
     canSubmit: status.can_submit,
     blockReason: status.block_reason,

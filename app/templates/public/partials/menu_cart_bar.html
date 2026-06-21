@@ -1,0 +1,20 @@
+{# cartBarFixed: true = dính đáy (QR bàn), false = trên bottom nav (/order) #}
+<div x-show="canSubmit !== false && totalItemCount > 0 && !cartOpen" x-cloak
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="translate-y-full opacity-0"
+     x-transition:enter-end="translate-y-0 opacity-100"
+     class="fixed inset-x-0 z-30 px-4 pointer-events-none {{ 'bottom-0 pb-[max(env(safe-area-inset-bottom),12px)]' if cartBarFixed else 'pub-cart-bar' }}">
+  <button type="button" @click="cartOpen = true"
+          class="pointer-events-auto w-full max-w-lg mx-auto h-14 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 active:from-amber-700 text-white shadow-xl flex items-center justify-between px-5 transition-all"
+          :class="cartBarBump ? 'pub-cart-bump' : ''">
+    <div class="flex items-center gap-2.5">
+      <div class="relative">
+        <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+        <span class="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-amber-700 text-[10px] font-bold flex items-center justify-center"
+              x-text="totalItemCount"></span>
+      </div>
+      <span class="font-semibold text-sm" x-text="cartBarLabel"></span>
+    </div>
+    <span class="font-extrabold" x-text="fmt(totalAmount)"></span>
+  </button>
+</div>

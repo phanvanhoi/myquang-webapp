@@ -1,0 +1,27 @@
+<div class="sticky top-0 z-20 bg-[#f7ecd0]/95 backdrop-blur-md border-b border-amber-200/50 shadow-sm">
+  <div class="max-w-3xl mx-auto px-4 pt-4 pb-3 space-y-3">
+    <div class="relative pub-reveal" style="animation-delay:.28s">
+      <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8a6502]/50"></i>
+      <input type="search" x-model="search" placeholder="Tìm món yêu thích..."
+             class="w-full pl-10 pr-4 h-11 rounded-2xl border border-amber-200/80 bg-white/90 text-sm text-[#5c4a1a] placeholder:text-amber-900/30 focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400 transition-shadow"/>
+    </div>
+
+    <div class="pub-tabs-wrap pub-reveal pb-1" style="animation-delay:.32s" x-ref="tabsWrap">
+      <div class="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-2 relative" x-ref="tabsRow">
+        <button type="button" @click="setCat(0)" data-cat="0"
+                :class="activeCat === 0 ? 'text-[#8a6502] font-bold' : 'text-[#5c4a1a]/60 font-semibold'"
+                class="shrink-0 h-9 px-4 rounded-full text-xs transition-colors">
+          Tất cả
+        </button>
+        {% for cat in categories %}
+        <button type="button" @click="setCat({{ cat.id }})" data-cat="{{ cat.id }}"
+                :class="activeCat === {{ cat.id }} ? 'text-[#8a6502] font-bold' : 'text-[#5c4a1a]/60 font-semibold'"
+                class="shrink-0 h-9 px-4 rounded-full text-xs transition-colors">
+          {{ cat.name }}
+        </button>
+        {% endfor %}
+      </div>
+      <div class="pub-tab-indicator" :style="tabIndicatorStyle"></div>
+    </div>
+  </div>
+</div>
