@@ -10,7 +10,7 @@ services:
       - NODE_ENV=production
       - PORT=3001
       - DB_PATH=/data/myquang.db
-      - TZ=Asia/Ho_Chi_Minh
+      - TZ=<+07>-7
       # Bắt buộc: tạo file .env cạnh docker-compose.yml (xem .env.example)
       - SECRET_KEY=${SECRET_KEY}
       - TRUST_PROXY=${TRUST_PROXY:-}
