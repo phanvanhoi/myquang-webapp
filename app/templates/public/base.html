@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#f59e0b" />
+  <meta name="theme-color" content="#8a6502" />
   <title>{% block title %}{{ settings.restaurant_name or 'MyQuang' }}{% endblock %}</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -14,31 +14,34 @@
           colors: {
             brand: { 50:'#fffbeb',100:'#fef3c7',200:'#fde68a',300:'#fcd34d',
                      400:'#fbbf24',500:'#f59e0b',600:'#d97706',700:'#b45309',
-                     800:'#92400e',900:'#78350f' }
+                     800:'#92400e',900:'#78350f' },
+            pub: { cream:'#f7ecd0', gold:'#8a6502', terra:'#c2410c' }
           },
-          fontFamily: { sans: ['"Be Vietnam Pro"','sans-serif'] }
+          fontFamily: {
+            sans: ['"Be Vietnam Pro"','sans-serif'],
+            display: ['"Cormorant Garamond"','Georgia','serif'],
+          }
         }
       }
     }
   </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/public-theme.css">
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
   <style>
     [x-cloak]{display:none!important}
-    .toast{animation:slideIn .3s ease,fadeOut .5s ease 2.5s forwards}
-    @keyframes slideIn{from{transform:translateY(-20px);opacity:0}to{transform:translateY(0);opacity:1}}
-    @keyframes fadeOut{from{opacity:1}to{opacity:0;pointer-events:none}}
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
   {% block head %}{% endblock %}
 </head>
 
-<body class="bg-amber-50 font-sans text-gray-800 min-h-screen">
+<body class="font-sans text-gray-800 antialiased">
 {% block content %}{% endblock %}
 
 <script>

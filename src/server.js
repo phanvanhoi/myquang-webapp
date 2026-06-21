@@ -30,6 +30,13 @@ try {
   console.error('[inventory-bootstrap]', err.message);
 }
 
+try {
+  const { ensureMenuStockImages } = require('./migrate-menu-images');
+  ensureMenuStockImages();
+} catch (err) {
+  console.error('[menu-images-bootstrap]', err.message);
+}
+
 const isProduction = process.env.NODE_ENV === 'production';
 const sessionSecret = process.env.SECRET_KEY;
 if (isProduction && !sessionSecret) {
@@ -113,6 +120,13 @@ app.use((req, res, next) => {
     res.locals.settings = settings;
   } catch (_) {
     res.locals.settings = {};
+  }
+
+  try {
+    const introPage = require('./lib/intro-page');
+    res.locals.publicHotline = introPage.hotlineTel;
+  } catch (_) {
+    res.locals.publicHotline = '+84971351112';
   }
 
   if (

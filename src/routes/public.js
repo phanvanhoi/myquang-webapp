@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { q } = require('../db');
 const { addItemsToOrderCore, finalizeOrderAfterItems } = require('../lib/order-items');
+const { enrichMenuItems, HERO_IMAGES } = require('../lib/menu-stock-images');
 
 // In-memory rate limit per phone — đủ MVP, reset khi container restart.
 const RATE_LIMIT_MS = 5 * 60 * 1000;
@@ -31,15 +32,21 @@ router.get('/', (req, res) => {
   const categories = q.all(
     `SELECT * FROM menu_categories WHERE is_active = 1 ORDER BY sort_order, name`
   );
-  const items = q.all(
+  const items = enrichMenuItems(q.all(
     `SELECT mi.*, mc.name as category_name
      FROM menu_items mi
      JOIN menu_categories mc ON mc.id = mi.category_id
      WHERE mi.is_active = 1 AND mi.is_available = 1
      ORDER BY mc.sort_order, mi.sort_order, mi.name`
-  );
+  ));
   const settings = q.getSettings();
-  res.render('public/order.html', { categories, items, settings });
+  res.render('public/order.html', {
+    categories,
+    items,
+    settings,
+    heroImages: HERO_IMAGES,
+    activeNav: 'order',
+  });
 });
 
 // POST /order/submit — { customer:{name,phone,address,note}, items:[{item_id,quantity,note}] }

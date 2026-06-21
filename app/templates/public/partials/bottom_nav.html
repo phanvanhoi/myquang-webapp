@@ -1,0 +1,20 @@
+{# Bottom nav — Giới thiệu | Đặt món | Gọi hotline #}
+<nav class="pub-bottom-nav" aria-label="Điều hướng chính">
+  <div class="max-w-lg mx-auto flex h-full">
+    <a href="/gioi-thieu"
+       class="pub-nav-item {{ 'is-active' if activeNav == 'intro' else '' }}">
+      <i data-lucide="home" class="w-5 h-5"></i>
+      <span>Giới thiệu</span>
+    </a>
+    <a href="/order"
+       class="pub-nav-item {{ 'is-active' if activeNav == 'order' else '' }}">
+      <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+      <span>Đặt món</span>
+    </a>
+    <a href="tel:{{ publicHotline }}"
+       class="pub-nav-item pub-nav-item--call">
+      <i data-lucide="phone" class="w-5 h-5"></i>
+      <span>Gọi ngay</span>
+    </a>
+  </div>
+</nav>

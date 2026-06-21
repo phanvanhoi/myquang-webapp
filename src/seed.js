@@ -132,12 +132,24 @@ function seed() {
       [catDrink.lastInsertRowid,   'Trà Sâm Dứa',        5000, 4],
       [catDrink.lastInsertRowid,   'Nước Suối',         10000, 5],
     ];
+    const catNames = {
+      [catMiQuang.lastInsertRowid]: 'Mì Quảng Truyền Thống',
+      [catBunMam.lastInsertRowid]: 'Bún Mắm Nêm',
+      [catCuon.lastInsertRowid]: 'Món Cuốn',
+      [catAnKem.lastInsertRowid]: 'Món Ăn Kèm',
+      [catComGa.lastInsertRowid]: 'Cơm Gà Hội An',
+      [catDrink.lastInsertRowid]: 'Giải Khát',
+    };
     menuItems.forEach(([cat, name, price, sort]) => {
-      q.run(`INSERT INTO menu_items (category_id, name, base_price, sort_order) VALUES (?,?,?,?)`,
-        cat, name, price, sort);
+      const img = resolveMenuImage(name, catNames[cat] || '');
+      q.run(
+        `INSERT INTO menu_items (category_id, name, base_price, sort_order, image_url) VALUES (?,?,?,?,?)`,
+        cat, name, price, sort, img
+      );
     });
 
     const { ensureInventoryItems, splitCombinedDrink, syncRecipes } = require('./migrate-inventory');
+    const { resolveMenuImage } = require('./lib/menu-stock-images');
     ensureInventoryItems();
     splitCombinedDrink();
     syncRecipes();

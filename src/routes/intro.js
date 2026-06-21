@@ -3,7 +3,7 @@ const router = express.Router();
 const intro = require('../lib/intro-page');
 
 router.get('/', (req, res) => {
-  res.render('public/intro.html', { intro });
+  res.render('public/intro.html', { intro, activeNav: 'intro' });
 });
 
 module.exports = router;

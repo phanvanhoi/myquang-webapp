@@ -64,6 +64,9 @@ docker compose exec -T myquang node src/migrate-virtual-tables.js || true
 echo "==> Migrate DB (QR gọi món tại bàn)"
 docker compose exec -T myquang node src/migrate-table-qr.js || true
 
+echo "==> Migrate menu stock images"
+docker compose exec -T myquang node src/migrate-menu-images.js || true
+
 echo "==> Logs (20 dòng cuối)"
 docker compose logs --tail=20 myquang
 

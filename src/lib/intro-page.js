@@ -1,45 +1,71 @@
 /** Nội dung trang giới thiệu — đồng bộ với https://taplink.cc/miquangque */
 module.exports = {
   avatarUrl: 'https://taplink.st/a/7/8/3/b/e0dc04.png?1',
+  heroImage: require('./menu-stock-images').INTRO_HERO,
   title: 'Ê ê ... Mì Quảng Quê',
-  tagline: 'Mì Quảng - Bún Mắm Nêm - Bánh Tráng Cuốn Thịt Heo - Cơm Gà Hội An',
+  tagline: 'Mì Quảng · Bún Mắm Nêm · Bánh Tráng Cuốn · Cơm Gà Hội An',
   hotline: '0971351112',
   hotlineTel: '+84971351112',
-  links: [
+  linkGroups: [
     {
-      title: 'HƯỚNG DẪN CÁCH ĂN MÌ QUẢNG ĐÚNG ĐIỆU',
-      subtitle: 'Đừng ăn mì Quảng như ăn bún, phở !',
-      href: 'https://byvn.net/cNBF',
+      id: 'delivery',
+      label: 'Giao & đặt món',
+      links: [
+        {
+          title: 'ShopeeFood',
+          subtitle: 'Nhiều mã — tài xế hay ghép nhiều đơn.',
+          href: 'https://shopeefood.shopee.vn/u/jxZdduT',
+          icon: 'shopping-bag',
+        },
+        {
+          title: 'GrabFood',
+          subtitle: 'Ship nhanh — trời mưa hơi khó tìm ship.',
+          href: 'https://byvn.net/0AOj',
+          icon: 'bike',
+        },
+        {
+          title: 'Xanh SM Ngon',
+          subtitle: 'Dễ tìm ship, giao nhanh.',
+          href: 'https://byvn.net/rYH2',
+          icon: 'zap',
+        },
+        {
+          title: 'BeeFood',
+          subtitle: 'Tốc độ ship trung bình.',
+          href: 'https://byvn.net/rYH2',
+          icon: 'package',
+        },
+      ],
     },
     {
-      title: 'Shopee',
-      subtitle: 'Nhiều mã nhưng lâu nhận được đơn vì tài xế thường ghép nhiều đơn.',
-      href: 'https://shopeefood.shopee.vn/u/jxZdduT',
+      id: 'visit',
+      label: 'Ghé quán',
+      links: [
+        {
+          title: 'Chỉ đường',
+          subtitle: 'Tìm đường đến Ê ê... Mì Quảng Quê',
+          href: 'https://byvn.net/VaKn',
+          icon: 'map-pin',
+        },
+        {
+          title: 'Đánh giá 5 sao Google',
+          subtitle: 'Mỗi sao là động lực — thiếu sót xin gọi hotline trước khi đánh giá.',
+          href: 'https://byvn.net/lVuJ',
+          icon: 'star',
+        },
+      ],
     },
     {
-      title: 'Grabfood',
-      subtitle: 'Ship lấy đồ nhanh nhưng trời mưa hơi khó tìm ship.',
-      href: 'https://byvn.net/0AOj',
-    },
-    {
-      title: 'XanhSmNgon',
-      subtitle: 'Dễ tìm ship, ship nhanh',
-      href: 'https://byvn.net/rYH2',
-    },
-    {
-      title: 'BeeFood',
-      subtitle: 'Tốc độ ship trung bình',
-      href: 'https://byvn.net/rYH2',
-    },
-    {
-      title: 'Đánh giá 5 Sao Google',
-      subtitle: 'Mỗi đánh giá 5 sao là động lực của quán. Nếu bữa ăn hôm nay có điều gì thiếu sót, xin đừng vội đánh giá, hãy inbox hoặc gọi hotline để quán xử lý ngay ạ.',
-      href: 'https://byvn.net/lVuJ',
-    },
-    {
-      title: 'Chỉ đường',
-      subtitle: 'Tìm đường đến Ê ê...Mì Quảng Quê',
-      href: 'https://byvn.net/VaKn',
+      id: 'learn',
+      label: 'Khám phá',
+      links: [
+        {
+          title: 'Cách ăn mì Quảng đúng điệu',
+          subtitle: 'Đừng ăn mì Quảng như ăn bún, phở!',
+          href: 'https://byvn.net/cNBF',
+          icon: 'book-open',
+        },
+      ],
     },
   ],
 };

@@ -1,0 +1,248 @@
+/* ── Ấm Quê — public pages (/gioi-thieu, /order) ── */
+:root {
+  --pub-cream: #f7ecd0;
+  --pub-cream-deep: #edd9a3;
+  --pub-gold: #8a6502;
+  --pub-gold-light: #b8860b;
+  --pub-amber: #d97706;
+  --pub-terra: #c2410c;
+  --pub-brown: #5c4a1a;
+  --pub-nav-h: 4.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.font-display {
+  font-family: 'Cormorant Garamond', 'Be Vietnam Pro', Georgia, serif;
+}
+
+.pub-page {
+  background: var(--pub-cream);
+  min-height: 100dvh;
+  padding-bottom: calc(var(--pub-nav-h) + env(safe-area-inset-bottom, 0px) + 1rem);
+}
+
+.pub-page--cart-active {
+  padding-bottom: calc(var(--pub-nav-h) + 5.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Grain overlay */
+.pub-grain::after {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  opacity: 0.035;
+  z-index: 1;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Steam waves */
+.pub-steam {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.pub-steam span {
+  position: absolute;
+  bottom: 10%;
+  width: 140%;
+  height: 40%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255,255,255,.22) 0%, transparent 70%);
+  animation: pubSteam 8s ease-in-out infinite;
+}
+.pub-steam span:nth-child(1) { left: -20%; animation-delay: 0s; }
+.pub-steam span:nth-child(2) { left: 10%; animation-delay: 2.5s; opacity: .6; }
+.pub-steam span:nth-child(3) { left: 40%; animation-delay: 5s; opacity: .4; }
+
+@keyframes pubSteam {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.3; }
+  50% { transform: translateY(-18px) scale(1.05); opacity: 0.55; }
+}
+
+/* Stagger reveal */
+.pub-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  animation: pubReveal 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes pubReveal {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pub-reveal-scroll {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.pub-reveal-scroll.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Shimmer CTA */
+.pub-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.pub-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.35) 50%, transparent 60%);
+  transform: translateX(-120%);
+  animation: pubShimmer 3.5s ease-in-out infinite;
+}
+@keyframes pubShimmer {
+  0%, 70%, 100% { transform: translateX(-120%); }
+  85% { transform: translateX(120%); }
+}
+
+/* Avatar pulse ring */
+.pub-avatar-ring {
+  animation: pubPulse 2.8s ease-out infinite;
+}
+@keyframes pubPulse {
+  0% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.45); }
+  70% { box-shadow: 0 0 0 14px rgba(217, 119, 6, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0); }
+}
+
+/* Link cards */
+.pub-card {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(138, 101, 2, 0.12);
+  box-shadow: 0 8px 28px rgba(92, 74, 26, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.pub-card:hover, .pub-card:active {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 32px rgba(194, 65, 12, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+}
+.pub-card:active { transform: scale(0.985) translateY(-1px); }
+
+.pub-card--cta {
+  background: linear-gradient(135deg, #f59e0b 0%, #c2410c 100%);
+  border: none;
+  color: #fff;
+  box-shadow: 0 12px 32px rgba(194, 65, 12, 0.28);
+}
+.pub-card--cta:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #c2410c 100%);
+}
+
+/* Section label */
+.pub-section-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pub-gold);
+  font-weight: 700;
+}
+
+/* Bottom nav */
+.pub-bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  height: calc(var(--pub-nav-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: rgba(255, 251, 235, 0.92);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(138, 101, 2, 0.15);
+  box-shadow: 0 -8px 32px rgba(92, 74, 26, 0.08);
+}
+.pub-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  flex: 1;
+  min-height: var(--pub-nav-h);
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--pub-brown);
+  opacity: 0.65;
+  transition: opacity 0.2s, color 0.2s, transform 0.2s;
+}
+.pub-nav-item.is-active {
+  opacity: 1;
+  color: var(--pub-amber);
+  transform: translateY(-2px);
+}
+.pub-nav-item--call {
+  color: var(--pub-terra);
+  opacity: 1;
+}
+
+/* Order page — hero marquee */
+.pub-marquee {
+  display: flex;
+  width: max-content;
+  animation: pubMarquee 28s linear infinite;
+}
+@keyframes pubMarquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* Category tab slider */
+.pub-tabs-wrap {
+  position: relative;
+}
+.pub-tab-indicator {
+  position: absolute;
+  bottom: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--pub-amber), var(--pub-terra));
+  transition: left 0.3s cubic-bezier(0.22, 1, 0.36, 1), width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Menu card */
+.pub-menu-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.pub-menu-card:active {
+  transform: scale(0.96);
+}
+.pub-menu-card:hover {
+  box-shadow: 0 12px 28px rgba(138, 101, 2, 0.14);
+}
+
+.pub-img-skeleton {
+  background: linear-gradient(90deg, #fde68a 25%, #fef3c7 50%, #fde68a 75%);
+  background-size: 200% 100%;
+  animation: pubSkeleton 1.4s ease infinite;
+}
+@keyframes pubSkeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Cart badge bounce */
+.pub-cart-bump {
+  animation: pubBump 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes pubBump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+/* Floating cart bar above nav */
+.pub-cart-bar {
+  bottom: calc(var(--pub-nav-h) + env(safe-area-inset-bottom, 0px) + 0.5rem);
+}
