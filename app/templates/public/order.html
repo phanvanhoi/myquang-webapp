@@ -44,6 +44,7 @@ function publicOrder() {
   return {
     customer: { name: '', phone: '', address: '', note: '' },
     hideOrderNav: false,
+    introNavHref: '/gioi-thieu',
 
     init() {
       if (window.MqTableSent) MqTableSent.clearForDeliveryFlow();

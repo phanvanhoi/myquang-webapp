@@ -21,6 +21,13 @@ function parseFromParam(searchOrQuery) {
   return new URLSearchParams(qs).get('from');
 }
 
+function getTokenFromUrl(searchOrQuery) {
+  if (!searchOrQuery) return '';
+  const raw = String(searchOrQuery);
+  const qs = raw.startsWith('?') ? raw.slice(1) : raw;
+  return new URLSearchParams(qs).get('t') || '';
+}
+
 /** URL có ?from=table — luồng chờ món tại bàn sau khi gửi bếp. */
 function isFromTableUrl(searchOrQuery) {
   return parseFromParam(searchOrQuery) === FROM_TABLE;
@@ -40,24 +47,76 @@ function getRemainingMs(data, now = Date.now()) {
   return Math.max(0, getEndMs(data) - now);
 }
 
+/** Khôi phục countdown từ query ?sent=&eta=&table=&t= sau redirect hoặc link tĩnh. */
+function parseFromUrl(searchOrQuery) {
+  if (!searchOrQuery) return null;
+  const raw = String(searchOrQuery);
+  const qs = raw.startsWith('?') ? raw.slice(1) : raw;
+  const q = new URLSearchParams(qs);
+  const sentAt = parseInt(q.get('sent'), 10);
+  const etaMinutes = parseInt(q.get('eta'), 10);
+  if (!sentAt || !etaMinutes) return null;
+  return {
+    sentAt,
+    etaMinutes,
+    tableName: q.get('table') || '',
+    tableToken: q.get('t') || '',
+    source: 'table',
+  };
+}
+
+function resolveState(storedData, searchOrQuery) {
+  const fromUrl = parseFromUrl(searchOrQuery);
+  if (storedData && isActive(storedData)) return storedData;
+  if (fromUrl && isActive(fromUrl)) return fromUrl;
+  return storedData || fromUrl || null;
+}
+
+function buildIntroQuery(data, searchOrQuery) {
+  const q = new URLSearchParams({ from: FROM_TABLE });
+  if (data) {
+    if (data.sentAt != null) q.set('sent', String(data.sentAt));
+    if (data.etaMinutes != null) q.set('eta', String(data.etaMinutes));
+    if (data.tableName) q.set('table', data.tableName);
+    const token = data.tableToken || getTokenFromUrl(searchOrQuery);
+    if (token) q.set('t', token);
+  }
+  return '?' + q.toString();
+}
+
 /**
- * Chỉ hiện UI chờ bàn (ẩn đặt online) khi vừa có session vừa vào từ ?from=table.
- * Tránh lẫn khi khách bấm「Về quán」từ /order mà session cũ còn trong tab.
+ * Hiện UI chờ bàn khi URL có ?from=table và còn countdown (storage hoặc query).
  */
 function shouldShowAwaitingUI(data, searchOrQuery, now = Date.now()) {
-  if (!data || data.sentAt == null) return false;
-  return isActive(data, now) && isFromTableUrl(searchOrQuery);
+  if (!isFromTableUrl(searchOrQuery)) return false;
+  const resolved = resolveState(data, searchOrQuery);
+  return resolved != null && isActive(resolved, now);
 }
 
 /** Session chờ bàn còn hiệu lực nhưng URL thiếu ?from=table — cần redirect/bổ sung param. */
 function needsTableIntroParam(data, searchOrQuery, now = Date.now()) {
-  if (!data || data.sentAt == null) return false;
-  return isActive(data, now) && !isFromTableUrl(searchOrQuery);
+  const resolved = resolveState(data, searchOrQuery);
+  if (!resolved || !isActive(resolved, now)) return false;
+  return !isFromTableUrl(searchOrQuery);
 }
 
-function introHref(data, now = Date.now()) {
-  if (data && isActive(data, now)) return '/gioi-thieu?from=table';
+function introHref(data, searchOrQuery, now = Date.now()) {
+  const resolved = resolveState(data, searchOrQuery);
+  if (resolved && isActive(resolved, now)) {
+    return '/gioi-thieu' + buildIntroQuery(resolved, searchOrQuery);
+  }
   return '/gioi-thieu';
+}
+
+/** Link giới thiệu từ trang QR bàn — luôn giữ ngữ cảnh bàn, không lẫn luồng online. */
+function tablePageIntroHref(tableToken) {
+  if (!tableToken) return '/gioi-thieu';
+  return `/gioi-thieu?from=table&t=${encodeURIComponent(tableToken)}`;
+}
+
+/** Đang ở luồng QR bàn (ẩn đặt online dù chưa gửi bếp). */
+function isTableFlowUrl(searchOrQuery) {
+  return isFromTableUrl(searchOrQuery);
 }
 
 module.exports = {
@@ -68,11 +127,17 @@ module.exports = {
   FROM_TABLE,
   randomEtaMinutes,
   parseFromParam,
+  getTokenFromUrl,
   isFromTableUrl,
   getEndMs,
   isActive,
   getRemainingMs,
+  parseFromUrl,
+  resolveState,
+  buildIntroQuery,
   shouldShowAwaitingUI,
   needsTableIntroParam,
   introHref,
+  tablePageIntroHref,
+  isTableFlowUrl,
 };

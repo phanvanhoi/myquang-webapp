@@ -34,7 +34,7 @@
       {{ heroSubtitle }}
     </p>
     <div class="pub-reveal flex flex-wrap gap-2 mt-4" style="animation-delay:.22s">
-      <a :href="(typeof MqTableSent !== 'undefined' && MqTableSent.introHref) ? MqTableSent.introHref() : '{{ heroBackHref | default('/gioi-thieu') }}'"
+      <a :href="typeof introNavHref !== 'undefined' ? introNavHref : '{{ heroBackHref | default('/gioi-thieu') }}'"
          class="inline-flex items-center gap-1.5 px-4 h-9 rounded-full bg-white/12 hover:bg-white/20 text-white text-xs font-semibold border border-white/25 transition-colors">
         <i data-lucide="home" class="w-3.5 h-3.5"></i> Về quán
       </a>

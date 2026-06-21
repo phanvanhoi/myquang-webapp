@@ -31,12 +31,13 @@
      :class="totalItemCount() > 0 && !cartOpen ? 'pub-page--table-cart' : ''"
      class="pub-page pub-grain relative min-h-screen">
 
+  {% set tableIntroHref = '/gioi-thieu?from=table&t=' ~ token %}
   {% set heroBadgeIcon = 'qr-code' %}
   {% set heroBadgeText = 'Gọi món tại bàn' %}
   {% set heroTitle = table.name %}
   {% set heroMeta = table.floor_name ~ ' · ' ~ table.code %}
   {% set heroSubtitle = 'Chọn món và gửi xuống bếp — món sẽ được phục vụ tại bàn.' %}
-  {% set heroBackHref = '/gioi-thieu' %}
+  {% set heroBackHref = tableIntroHref %}
   {% include "public/partials/menu_hero.html" %}
 
   <div x-show="!canSubmit && blockReason" x-cloak class="max-w-3xl mx-auto px-4 -mt-2 relative z-10">
@@ -74,6 +75,8 @@ function tableGuestOrder() {
     pollTimer: null,
     redirectTimer: null,
     hideOrderNav: true,
+    tableOrderNavHref: '',
+    introNavHref: {{ ('/gioi-thieu?from=table&t=' ~ token) | tojson | safe }},
 
     init() {
       const cfg = window.__mqMenu || {};
@@ -91,6 +94,7 @@ function tableGuestOrder() {
       this.tableName = tbl.tableName || '';
       this.orderSummary = tbl.initialSummary;
       this.blockReason = tbl.blockReason || null;
+      this.tableOrderNavHref = this.token ? '/t/' + encodeURIComponent(this.token) : '';
       this.initPubMenu();
       this.pollTimer = setInterval(() => this.refreshStatus(), 15000);
     },
@@ -113,8 +117,15 @@ function tableGuestOrder() {
           this.orderSummary = data.order;
           this.canSubmit = data.can_submit !== false;
           this.blockReason = data.block_reason || null;
+          this.syncIntroNavHref();
         }
       } catch (e) {}
+    },
+
+    syncIntroNavHref() {
+      this.introNavHref = (window.MqTableSent && this.token)
+        ? MqTableSent.tablePageIntroHref(this.token)
+        : '/gioi-thieu';
     },
 
     async submit() {
@@ -137,12 +148,17 @@ function tableGuestOrder() {
         const data = await resp.json();
         if (data.success) {
           const name = (data.table && data.table.name) || this.tableName;
-          if (window.MqTableSent) MqTableSent.save({ tableName: name });
+          let introRedirect = '/gioi-thieu?from=table&t=' + encodeURIComponent(this.token);
+          if (window.MqTableSent) {
+            const saved = MqTableSent.save({ tableName: name, tableToken: this.token });
+            introRedirect = '/gioi-thieu' + MqTableSent.buildIntroQuery(saved);
+          }
           this.cart = [];
           this.cartOpen = false;
           this.orderSummary = data.summary;
           this.canSubmit = data.can_submit !== false;
           this.blockReason = data.block_reason || null;
+          this.syncIntroNavHref();
           this.showSentOverlay = true;
           this.redirectSec = 3;
           this.submitting = false;
@@ -152,7 +168,7 @@ function tableGuestOrder() {
             this.redirectSec -= 1;
             if (this.redirectSec <= 0) {
               clearInterval(this.redirectTimer);
-              window.location.href = '/gioi-thieu?from=table';
+              window.location.href = introRedirect;
             }
           }, 1000);
         } else {
