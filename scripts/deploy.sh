@@ -5,6 +5,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+export DOCKER_BUILDKIT=1
+export COMPOSE_DOCKER_CLI_BUILD=1
+
 if [[ ! -f .env ]] || ! grep -q '^SECRET_KEY=.\+' .env 2>/dev/null; then
   echo "ERROR: Thiếu .env hoặc SECRET_KEY chưa được set (xem .env.example)."
   exit 1
