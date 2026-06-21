@@ -1,0 +1,113 @@
+{% extends "public/base.html" %}
+{% block title %}Giới thiệu — {{ intro.title }}{% endblock %}
+
+{% block head %}
+<style>
+  .intro-bg {
+    background-color: #f7ecd0;
+    background-image:
+      linear-gradient(180deg, rgba(247,236,208,.92) 0%, rgba(247,236,208,.98) 45%, #f7ecd0 100%),
+      url('https://taplink.st/s/i/themes/560720.jpg');
+    background-size: cover;
+    background-position: 50% 0%;
+    background-attachment: fixed;
+  }
+  .intro-link {
+    background: rgba(255,255,255,.78);
+    border: 1px solid rgba(138,101,2,.12);
+    box-shadow: 0 8px 24px rgba(201,42,42,.08);
+    transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+  }
+  .intro-link:hover {
+    transform: translateY(-2px);
+    background: rgba(255,255,255,.95);
+    box-shadow: 0 12px 28px rgba(201,42,42,.14);
+  }
+  .intro-link:active { transform: scale(.985); }
+  .intro-link-primary {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    border: none;
+    box-shadow: 0 10px 28px rgba(217,119,6,.28);
+    color: #fff;
+  }
+  .intro-link-primary:hover {
+    background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+    box-shadow: 0 14px 32px rgba(217,119,6,.34);
+  }
+  .intro-link-primary .intro-sub { color: rgba(255,255,255,.88); }
+  .intro-title { color: #8a6502; }
+  .intro-sub { color: #5c4a1a; }
+  @keyframes introFadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .intro-animate { animation: introFadeUp .55s ease both; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="intro-bg min-h-screen pb-10">
+  <div class="max-w-md mx-auto px-4 pt-10 sm:pt-14">
+
+    {# Avatar + tiêu đề #}
+    <div class="text-center intro-animate" style="animation-delay:.05s">
+      <div class="mx-auto w-28 h-28 rounded-full overflow-hidden ring-4 ring-white/80 shadow-xl mb-4">
+        <img src="{{ intro.avatarUrl }}" alt="{{ intro.title }}"
+             class="w-full h-full object-cover" loading="eager" decoding="async">
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-extrabold intro-title tracking-tight">{{ intro.title }}</h1>
+      <p class="mt-3 text-sm sm:text-base font-semibold intro-title leading-relaxed px-2">
+        {{ intro.tagline }}
+      </p>
+    </div>
+
+    {# Links #}
+    <div class="mt-8 space-y-3">
+      <a href="/order"
+         class="intro-link intro-link-primary block rounded-full px-5 py-4 intro-animate"
+         style="animation-delay:.12s">
+        <div class="font-bold text-base text-center">Đặt món online</div>
+        <div class="intro-sub text-xs text-center mt-1">Giao tận nơi — đặt trực tiếp trên app quán</div>
+      </a>
+
+      {% for link in intro.links %}
+      <a href="{{ link.href }}" target="_blank" rel="noopener noreferrer"
+         class="intro-link block rounded-full px-5 py-4 intro-animate"
+         style="animation-delay:{{ 0.12 + loop.index * 0.04 }}s">
+        <div class="font-bold text-sm sm:text-base text-center intro-title uppercase tracking-wide">
+          {{ link.title }}
+        </div>
+        {% if link.subtitle %}
+        <div class="intro-sub text-xs sm:text-sm text-center mt-1.5 leading-relaxed">
+          {{ link.subtitle }}
+        </div>
+        {% endif %}
+      </a>
+      {% endfor %}
+
+      <a href="tel:{{ intro.hotlineTel }}"
+         class="intro-link block rounded-full px-5 py-4 intro-animate"
+         style="animation-delay:{{ 0.12 + (intro.links|length + 1) * 0.04 }}s">
+        <div class="font-bold text-base text-center intro-title uppercase tracking-wide">Hotline</div>
+        <div class="text-lg font-extrabold text-center text-amber-700 mt-1">{{ intro.hotline }}</div>
+        <div class="intro-sub text-xs text-center mt-1.5">
+          Liên hệ đặt món hoặc có bất cứ phản hồi nào về món ăn
+        </div>
+      </a>
+    </div>
+
+    {% if settings.restaurant_address %}
+    <p class="text-center text-xs intro-sub mt-8 intro-animate" style="animation-delay:.45s">
+      <i data-lucide="map-pin" class="w-3.5 h-3.5 inline-block -mt-0.5"></i>
+      {{ settings.restaurant_address }}
+    </p>
+    {% endif %}
+
+    <p class="text-center text-[11px] text-amber-900/45 mt-4">
+      <a href="https://taplink.cc/miquangque" target="_blank" rel="noopener" class="hover:underline">
+        taplink.cc/miquangque
+      </a>
+    </p>
+  </div>
+</div>
+{% endblock %}
