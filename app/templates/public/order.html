@@ -1,6 +1,10 @@
 {% extends "public/base.html" %}
 {% block title %}Đặt món — {{ settings.restaurant_name or 'MyQuang' }}{% endblock %}
 
+{% block head %}
+<script src="/js/pub-table-sent.js"></script>
+{% endblock %}
+
 {% block content %}
 <script>
   window.__mqMenu = {
@@ -19,6 +23,7 @@
   {% set heroBadgeText = 'Giao tận nơi' %}
   {% set heroTitle = settings.restaurant_name or 'MyQuang' %}
   {% set heroSubtitle = 'Tinh hoa ẩm thực xứ Quảng — đặt online, giao tận nhà.' %}
+  {% set heroBackHref = '/gioi-thieu' %}
   {% include "public/partials/menu_hero.html" %}
 
   {% include "public/partials/menu_search_tabs.html" %}
@@ -41,6 +46,7 @@ function publicOrder() {
     hideOrderNav: false,
 
     init() {
+      if (window.MqTableSent) MqTableSent.clearForDeliveryFlow();
       const cfg = window.__mqMenu || {};
       applyPubMenuBase(this, cfg.menuItems, {
         heroImages: cfg.heroImages,

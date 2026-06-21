@@ -298,7 +298,7 @@
   to { transform: scale(1); opacity: 1; }
 }
 
-/* QR bàn — chừa chỗ cart bar (không có bottom nav) */
+/* QR bàn — bottom nav + cart bar */
 .pub-page--table-cart {
-  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px) + 1rem);
+  padding-bottom: calc(var(--pub-nav-h) + 5.5rem + env(safe-area-inset-bottom, 0px) + 1rem);
 }

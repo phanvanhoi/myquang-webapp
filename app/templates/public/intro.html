@@ -168,23 +168,29 @@ function introAwaiting() {
 
     init() {
       this.refresh();
-      if (this.awaiting) {
-        this.timer = setInterval(() => this.refresh(), 1000);
-      }
+      this.timer = setInterval(() => this.refresh(), 1000);
     },
 
     refresh() {
       const M = window.MqTableSent;
       const data = M && M.load();
-      if (!data || !M.isActive(data)) {
+      const showAwaiting = M && M.shouldShowAwaitingUI(data, window.location.search);
+
+      if (!showAwaiting) {
         this.awaiting = false;
         this.hideOrderNav = false;
         if (this.timer) {
           clearInterval(this.timer);
           this.timer = null;
         }
+        if (M && M.isFromTableUrl(window.location.search) && data && !M.isActive(data)) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('from');
+          window.history.replaceState({}, '', url.pathname + (url.search || ''));
+        }
         return;
       }
+
       this.awaiting = true;
       this.hideOrderNav = true;
       this.tableName = data.tableName || 'bàn bạn';

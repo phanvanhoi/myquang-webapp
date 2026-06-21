@@ -36,6 +36,7 @@
   {% set heroTitle = table.name %}
   {% set heroMeta = table.floor_name ~ ' · ' ~ table.code %}
   {% set heroSubtitle = 'Chọn món và gửi xuống bếp — món sẽ được phục vụ tại bàn.' %}
+  {% set heroBackHref = '/gioi-thieu' %}
   {% include "public/partials/menu_hero.html" %}
 
   <div x-show="!canSubmit && blockReason" x-cloak class="max-w-3xl mx-auto px-4 -mt-2 relative z-10">
@@ -53,6 +54,8 @@
   {% include "public/partials/menu_cart_bar.html" %}
   {% include "public/partials/menu_cart_drawer.html" %}
   {% include "public/partials/menu_sent_overlay.html" %}
+
+  {% include "public/partials/bottom_nav.html" %}
 </div>
 {% endblock %}
 
@@ -70,7 +73,7 @@ function tableGuestOrder() {
     redirectSec: 3,
     pollTimer: null,
     redirectTimer: null,
-    hideOrderNav: false,
+    hideOrderNav: true,
 
     init() {
       const cfg = window.__mqMenu || {};
